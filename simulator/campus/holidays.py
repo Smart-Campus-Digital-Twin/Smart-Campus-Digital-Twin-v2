@@ -1,0 +1,45 @@
+"""
+Sri Lanka public holidays — loaded from data/holidays.yaml.
+
+Single source of truth imported by AcademicCalendar, EventCalendar, and all zone sensors.
+Add future years to data/holidays.yaml; nothing else needs to change.
+"""
+
+from __future__ import annotations
+
+import os
+from datetime import date
+from typing import Dict, FrozenSet
+
+import yaml
+
+_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+
+
+def _load_holidays() -> Dict[int, FrozenSet[date]]:
+    path = os.path.join(_DATA_DIR, "holidays.yaml")
+    with open(path, encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+    by_year: Dict[int, FrozenSet[date]] = {}
+    for year, entries in raw.get("holidays", {}).items():
+        by_year[int(year)] = frozenset(date.fromisoformat(e["date"]) for e in entries)
+    return by_year
+
+
+_BY_YEAR: Dict[int, FrozenSet[date]] = _load_holidays()
+
+
+def is_holiday(d: date) -> bool:
+    """Return True if `d` is a Sri Lanka public holiday."""
+    return d in _BY_YEAR.get(d.year, frozenset())
+
+
+def holidays_for_year(year: int) -> FrozenSet[date]:
+    return _BY_YEAR.get(year, frozenset())
+
+
+def all_holidays() -> FrozenSet[date]:
+    result: set = set()
+    for s in _BY_YEAR.values():
+        result |= s
+    return frozenset(result)
