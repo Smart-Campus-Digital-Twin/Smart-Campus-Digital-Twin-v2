@@ -127,15 +127,15 @@ class CampusTopology:
             # Floor 2 — specific rooms from CSE floor plan
             + [
                 # Top row
-                _room("sumanadasa", 2, "seminar",           "classroom",   45, STANDARD),
+                _room("sumanadasa", 2, "seminar",           "classroom",  100, STANDARD),
                 _room("sumanadasa", 2, "codegen-lab",       "lab",         40, STANDARD),
                 _room("sumanadasa", 2, "sysco-lounge",      "classroom",   30, STANDARD),
                 _room("sumanadasa", 2, "insight-hub",       "lab",         50, STANDARD),
-                _room("sumanadasa", 2, "network-lab",       "lab",         35, STANDARD),
+                _room("sumanadasa", 2, "network-lab",       "lab",         50, STANDARD),
                 _room("sumanadasa", 2, "embedded-lab",      "lab",         30, STANDARD),
                 _room("sumanadasa", 2, "hpc-lab",           "lab",         20, STANDARD),
                 _room("sumanadasa", 2, "intellisense-lab",  "lab",         35, STANDARD),
-                _room("sumanadasa", 2, "l3-lab",            "lab",         50, STANDARD),
+                _room("sumanadasa", 2, "l3-lab",            "lab",        200, STANDARD),
                 # Middle sections (staircases omitted — no sensors)
                 _room("sumanadasa", 2, "studio",            "classroom",   20, STANDARD),
                 _room("sumanadasa", 2, "oldcodegen-lab",    "lab",         30, STANDARD),
@@ -144,7 +144,7 @@ class CampusTopology:
                 _room("sumanadasa", 2, "instructor-room",   "office",      12, STANDARD),
                 # Bottom row
                 _room("sumanadasa", 2, "server",            "server_room",  0, SERVER),
-                _room("sumanadasa", 2, "ice-room",          "office",      20, STANDARD),
+                _room("sumanadasa", 2, "ice-room",          "office",      50, STANDARD),
                 _room("sumanadasa", 2, "staff-room",        "office",      30, STANDARD),
                 _room("sumanadasa", 2, "ra-lab",            "lab",         35, STANDARD),
                 _room("sumanadasa", 2, "gtn-lab",           "lab",         40, STANDARD),
@@ -202,11 +202,12 @@ class CampusTopology:
         ete = Building("dept-ete", "Dept of Electronics & Telecom Engineering")
         ete.rooms = _acad_floors("dept-ete", 4, cls_cap=80, lab_cap=45)
 
-        # 17. NA1 & NA2 — large lecture halls, 300 cap each
-        na_hall = Building("na-hall", "NA1 & NA2 Lecture Halls")
+        # 17. NA lecture halls — lecture halls for Maths, 300 cap each
+        na_hall = Building("na-hall", "NA Lecture Halls")
         na_hall.rooms = [
-            _room("na-hall", 1, "na1", "auditorium", 300, STANDARD),
-            _room("na-hall", 1, "na2", "auditorium", 300, STANDARD),
+            _room("na-hall", 1, "na1", "classroom", 300, STANDARD),
+            _room("na-hall", 2, "na2", "classroom", 300, STANDARD),
+            _room("na-hall", 3, "na3", "classroom", 300, STANDARD),
         ]
 
         # 18. Wala Canteen — 200 cap
