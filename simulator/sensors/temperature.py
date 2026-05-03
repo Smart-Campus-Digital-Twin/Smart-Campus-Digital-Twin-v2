@@ -103,6 +103,9 @@ _BUILDING_HEAT: Dict[str, float] = {
 }
 
 
+_HVAC_DEADBAND = 0.5   # °C half-band for thermostat hysteresis
+
+
 class TemperatureSensor(BaseSensor):
 
     # Indoor HVAC cycle amplitude (°C half-swing).
@@ -121,6 +124,7 @@ class TemperatureSensor(BaseSensor):
         profile = _ZP.get(self.room_type, _DEFAULT_PROFILE)
         sp: Optional[float] = profile[0]
         self._prev: float = sp if sp is not None else _outdoor_ambient(12.0)
+        self._hvac_on: bool = False   # thermostat state (hysteresis)
 
     def _sample(self, context: Dict[str, Any]) -> float:
         hour: float = context.get("hour", 12.0)
@@ -132,28 +136,46 @@ class TemperatureSensor(BaseSensor):
         profile = _ZP.get(self.room_type, _DEFAULT_PROFILE)
         setpoint, occ_gain, equip_gain, hvac_start, hvac_end, lo, hi = profile
 
-        bld_heat     = _BUILDING_HEAT.get(self.building_id, 0.0)
-        total_equip  = equip_gain + bld_heat
+        bld_heat    = _BUILDING_HEAT.get(self.building_id, 0.0)
+        total_equip = equip_gain + bld_heat
+
+        # Nonlinear occupancy heat gain: density matters more at high occupancy.
+        # occ^1.5 underweights sparse crowds and overweights packed rooms.
+        nonlinear_occ = occ ** 1.5
 
         if setpoint is None:
-            # No central HVAC (hostel, outdoor): track outdoor ambient
-            target = _outdoor_ambient(hour)
-            theta  = 0.06
+            # No central HVAC (hostel, outdoor): track outdoor ambient.
+            # Asymmetric: solar gain warms faster (θ=0.07) than night cooling (θ=0.04).
+            ambient = _outdoor_ambient(hour)
+            theta   = 0.07 if ambient > self._prev else 0.04
+            target  = ambient
         else:
-            hvac_on = hvac_start <= hour < hvac_end
-            if hvac_on:
-                # Indoor sinusoidal cycle peaks at 14:00 (solar load), troughs at 02:00.
-                # sin(2π*(h−8)/24) = 1 at h=14, = −1 at h=2.
-                cycle  = self.HVAC_AMPLITUDE * math.sin(
-                    2 * math.pi * (hour - 8.0) / 24.0
-                )
-                target = setpoint + cycle + occ_gain * occ + total_equip
-                theta  = 0.12
+            in_schedule = hvac_start <= hour < hvac_end
+            cycle = self.HVAC_AMPLITUDE * math.sin(2 * math.pi * (hour - 8.0) / 24.0)
+            comfort_target = setpoint + cycle + occ_gain * nonlinear_occ + total_equip
+
+            if in_schedule:
+                # Thermostat hysteresis: flip ON above setpoint+deadband,
+                # flip OFF below setpoint-deadband; hold state in between.
+                if self._prev >= setpoint + _HVAC_DEADBAND:
+                    self._hvac_on = True
+                elif self._prev <= setpoint - _HVAC_DEADBAND:
+                    self._hvac_on = False
+
+                if self._hvac_on:
+                    target = comfort_target
+                    # Asymmetric: HVAC cools quickly (θ=0.12), heats more slowly (θ=0.09).
+                    theta  = 0.12 if self._prev > target else 0.09
+                else:
+                    # Thermostat satisfied — room drifts passively (thermal mass, slow).
+                    target = _outdoor_ambient(hour)
+                    theta  = 0.02
             else:
-                # HVAC off — room drifts toward outdoor ambient.
-                # Moratuwa nights cool to ~24-26 °C, so buildings genuinely lose heat.
+                # Outside operating hours: fully off, drift toward outdoor ambient.
+                # Concrete holds heat so cooling (room > outdoor) is slower than heating.
+                self._hvac_on = False
                 target = _outdoor_ambient(hour)
-                theta  = 0.04
+                theta  = 0.04 if self._prev > target else 0.06
 
         dt_scale    = config.publish_interval_s / _REF_INTERVAL
         noise_sigma = self.NOISE_SIGMA * math.sqrt(dt_scale)

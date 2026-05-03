@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -21,7 +22,7 @@ class MQTTPublisher:
     def __init__(self) -> None:
         self._client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
-            client_id="campus-simulator",
+            client_id=f"campus-simulator-{uuid.uuid4().hex[:8]}",
         )
         if config.mqtt_username:
             self._client.username_pw_set(config.mqtt_username, config.mqtt_password)

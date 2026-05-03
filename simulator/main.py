@@ -22,7 +22,7 @@ import signal
 import sys
 import time
 from datetime import date as dt_date, datetime
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -62,11 +62,12 @@ def _make_context(
     academic_day = academic_calendar.get_day(today)
 
     return {
-        "hour":              hour,
-        "day_of_week":       now.weekday(),
-        "is_holiday":        is_holiday(today),
-        "academic_day":      academic_day,  # Contains congestion_fraction, activity type, TUA flag
-        "active_venue_fill": event_calendar.active_venue_fill(today, hour),
+        "hour":               hour,
+        "day_of_week":        now.weekday(),
+        "is_holiday":         is_holiday(today),
+        "academic_day":       academic_day,
+        "active_venue_fill":  event_calendar.active_venue_fill(today, hour),
+        "active_event_types": event_calendar.active_event_types(today, hour),
     }
 
 
@@ -124,19 +125,28 @@ def main() -> None:
         today = now.date()
         academic_day = academic_cal.get_day(today)
 
-        # Pass 1: occupancy sensors → get per-room headcount ratios
-        occ_readings: Dict[str, float] = {}
+        # Pass 1: occupancy sensors only — advance state once, cache both the
+        # ratio (for temperature/energy) and the SensorReading (for publishing).
+        occ_readings:  Dict[str, float]  = {}
+        occ_published: Dict[str, object] = {}
         for room, sensor in all_sensors:
             if sensor.sensor_type == "occupancy" and isinstance(sensor, OccupancySensor):
                 r = sensor.read(ctx)
-                occ_readings[room.room_id] = r.value / max(1, sensor.capacity)
+                if r is not None:
+                    occ_readings[room.room_id]      = r.value / max(1, sensor.capacity)
+                    occ_published[sensor.sensor_id] = r
 
-        # Pass 2: all sensors with occupancy_ratio injected
+        # Pass 2: temperature + energy sensors with occupancy_ratio injected;
+        # occupancy sensors reuse the cached Pass-1 reading (no second _count advance).
         for room, sensor in all_sensors:
-            room_ctx = {**ctx, "occupancy_ratio": occ_readings.get(room.room_id, 0.0)}
-            reading  = sensor.read(room_ctx)
-            publisher.publish(reading)
-            reading_count += 1
+            if sensor.sensor_id in occ_published:
+                reading = occ_published[sensor.sensor_id]
+            else:
+                room_ctx = {**ctx, "occupancy_ratio": occ_readings.get(room.room_id, 0.0)}
+                reading  = sensor.read(room_ctx)
+            if reading is not None:
+                publisher.publish(reading)
+                reading_count += 1
 
         if reading_count % (len(all_sensors) * 10) == 0:
             events_today = event_calendar.events_for_date(today)

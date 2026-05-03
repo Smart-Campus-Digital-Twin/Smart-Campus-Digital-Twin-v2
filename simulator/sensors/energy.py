@@ -34,14 +34,29 @@ class EnergySensor(BaseSensor):
     }
 
     # Additional load at full occupancy for non-server rooms (W)
-    _OCC_GAIN  = 200.0
+    _OCC_GAIN   = 200.0
     # Additional load during active lecture/event hours (projector etc.) (W)
     _EQUIP_GAIN = 150.0
-    # Standby load when room empty and outside hours (W)
-    _STANDBY = 20.0
+    # Equipment warmup window before lectures begin (hours)
+    _EQUIP_RAMP = 15 / 60    # 08:00–08:15 warmup
 
     _LECTURE_START = 8 + 15/60   # 08:15
     _LECTURE_END   = 17 + 15/60  # 17:15
+
+    # Per room-type night-standby loads (W) — canteen refrigeration, lab
+    # equipment standby, and library emergency lighting differ significantly.
+    _STANDBY: Dict[str, float] = {
+        "classroom":    20.0,
+        "lab":          35.0,   # equipment standby, ventilation
+        "office":       15.0,
+        "canteen":      80.0,   # refrigeration + emergency lighting
+        "auditorium":   30.0,
+        "hostel":       25.0,   # corridor + stairwell lighting
+        "library":      40.0,   # emergency/security lighting, a few PCs
+        "server_room": 350.0,   # never really on standby
+        "outdoor":       0.0,
+        "default":      20.0,
+    }
 
     def _sample(self, context: Dict[str, Any]) -> float:
         hour: float = context.get("hour", 12.0)
@@ -53,22 +68,28 @@ class EnergySensor(BaseSensor):
             noise = random.gauss(0, 15.0)
             return self._clamp(base + noise, 200.0, 500.0)
 
-        base = self._BASE.get(self.room_type, self._BASE["default"])
+        base    = self._BASE.get(self.room_type, self._BASE["default"])
+        standby = self._STANDBY.get(self.room_type, self._STANDBY["default"])
+
+        # Night-time / empty rooms: drop to per-type standby
+        is_night = hour < 6.5 or hour >= 22.0
+        if is_night and occ < 0.02:
+            noise = random.gauss(0, 2.0)
+            return self._clamp(standby + noise, 0.0, 500.0)
 
         # Occupancy load scales with how many people are present
         occ_load = self._OCC_GAIN * occ
 
-        # Equipment load: proportional to occupancy during active hours
-        # (projectors/PCs switched on only when room is in use)
-        in_active_hours = self._LECTURE_START <= hour <= self._LECTURE_END
-        equip_load = self._EQUIP_GAIN * occ if in_active_hours else 0.0
-
-        # Night-time / empty rooms: drop to standby only
-        is_night = hour < 6.5 or hour >= 22.0
-        if is_night and occ < 0.02:
-            noise = random.gauss(0, 2.0)
-            return self._clamp(self._STANDBY + noise, 0.0, 500.0)
+        # Equipment load: 15-min warmup ramp before lectures, then occupancy-scaled.
+        ramp_start = self._LECTURE_START - self._EQUIP_RAMP
+        if hour < ramp_start or hour > self._LECTURE_END:
+            equip_factor = 0.0
+        elif hour < self._LECTURE_START:
+            equip_factor = (hour - ramp_start) / self._EQUIP_RAMP
+        else:
+            equip_factor = 1.0
+        equip_load = self._EQUIP_GAIN * occ * equip_factor
 
         noise = random.gauss(0, 8.0)
         total = base + occ_load + equip_load + noise
-        return self._clamp(total, self._STANDBY, 500.0)
+        return self._clamp(total, standby, 500.0)

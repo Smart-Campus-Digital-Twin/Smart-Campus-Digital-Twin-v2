@@ -60,27 +60,35 @@ class OccupancySensor(BaseSensor):
 
     def _apply_flow(self, ratio: float) -> int:
         """
-        Apply Gaussian noise then move _count one step toward ratio * capacity
-        using probabilistic entry/exit.  Returns the updated count.
+        Move _count toward ratio * capacity using probabilistic entry/exit.
 
-        Used by both OccupancySensor._sample() and ZoneOccupancySensor._sample()
-        to avoid duplicating the flow logic.
+        Burst mode: when the gap exceeds 10 % of capacity (e.g. a lecture hall
+        going from empty to full), up to capacity//20 people move per tick so
+        the hall fills in ~2-3 minutes rather than 80+ minutes.  Small gaps
+        keep the fine-grained one-person-at-a-time behaviour.
         """
-        target = ratio * self.capacity
-        target += random.gauss(0, max(1, self.capacity * 0.04))
-        target = int(max(0, min(self.capacity, round(target))))
+        target = int(max(0, min(self.capacity,
+                    round(ratio * self.capacity
+                          + random.gauss(0, max(1, self.capacity * 0.04))))))
 
         diff = target - self._count
-        if diff > 0:
-            prob = min(0.92, diff / max(1, self.capacity * 1.5))
-            if random.random() < prob:
-                self._count += 1
-        elif diff < 0:
-            prob = min(0.92, -diff / max(1, self.capacity * 1.0))
-            if random.random() < prob:
-                self._count -= 1
+        if diff == 0:
+            return self._count
 
-        self._count = max(0, min(self.capacity, self._count))
+        abs_diff = abs(diff)
+        # Burst: allow larger steps only when gap is significant
+        if abs_diff > self.capacity * 0.10:
+            step = max(1, min(abs_diff, self.capacity // 20))
+        else:
+            step = 1
+
+        prob = min(0.92, abs_diff / max(1, self.capacity * 1.5))
+        if random.random() < prob:
+            if diff > 0:
+                self._count = min(self.capacity, self._count + step)
+            else:
+                self._count = max(0, self._count - step)
+
         return self._count
 
     # ── Sensor tick ───────────────────────────────────────────────────────────

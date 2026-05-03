@@ -5,8 +5,11 @@ Key patterns:
   - Normally 0-1.5% (random small groups passing through)
   - Event-driven: EventCalendar provides active_venue_fill
   - Lunch break: slightly higher foot traffic
-  - Weather affects occupancy (not modeled here, could add)
   - Exam periods: quieter (students focused)
+  - Seasonal modulation via month proxy:
+      Mar-Apr  hot season (~33 °C) → midday dip, people avoid sun
+      May, Oct-Nov SW/NE monsoon  → all-day reduction
+      Dec-Jan  cool season        → slight increase
 """
 
 import random
@@ -15,26 +18,41 @@ from .base_zone import BaseZone, ZoneContext
 
 
 def _outdoor_background_ratio(hour: float) -> float:
-    """Background outdoor occupancy - small random groups."""
+    """Background outdoor occupancy — small random groups passing through."""
     if hour < 7.0 or hour >= 21.0:
         return 0.0
-
-    # Random small groups passing through
     if random.random() < 0.35:
         return random.uniform(0, 0.015)
-
     return 0.0
 
 
+def _season_factor(month: int, hour: float) -> float:
+    """
+    Month-as-weather-proxy modifier for outdoor occupancy.
+
+    Moratuwa climate:
+      Mar-Apr: hot (~33 °C peak), people avoid 11:00-15:00 outdoors
+      May, Oct-Nov: SW/NE monsoon, ~50 % rain reduction
+      Dec-Jan: cooler and drier, more pleasant outdoors
+    """
+    if month in (3, 4):            # hot season
+        if 11.0 <= hour < 15.0:
+            return 0.4             # strong midday heat deterrent
+        return 0.85
+    if month in (5, 10, 11):       # monsoon months
+        return 0.6
+    if month in (12, 1):           # cool / dry season
+        return 1.2
+    return 1.0
+
+
 class OutdoorZone(BaseZone):
-    """
-    Outdoor zones with event-driven or background foot traffic.
-    """
+    """Outdoor zones with event-driven or background foot traffic."""
 
     def _target_ratio(self, ctx: ZoneContext) -> float:
         hour = ctx.hour
 
-        # Check for event override first
+        # Event override takes full precedence
         if self.building_id in ctx.active_venue_fill:
             return ctx.active_venue_fill[self.building_id]
 
@@ -42,22 +60,22 @@ class OutdoorZone(BaseZone):
         if hour < 6.0 or hour >= 22.0:
             return 0.0
 
-        # Holidays: minimal
+        # Holidays: minimal passersby
         if ctx.is_holiday:
             return random.uniform(0, 0.02)
 
-        # Weekends: slightly more (people walking around)
         base = _outdoor_background_ratio(hour)
         if ctx.is_weekend:
             base *= 1.5
 
-        # Exam periods: quieter
         if ctx.is_exam_period:
             base *= 0.30
 
-        # During breaks: people walk around more
         if ctx.academic_day.is_low_attendance:
             base *= 2.0
 
-        # Scale by congestion (but outdoor has minimum threshold)
+        # Seasonal / weather proxy
+        month = ctx.academic_day.date.month
+        base *= _season_factor(month, hour)
+
         return max(0.005, base * max(0.20, ctx.congestion_fraction))

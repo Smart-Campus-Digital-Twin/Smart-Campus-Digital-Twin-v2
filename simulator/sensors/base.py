@@ -1,11 +1,19 @@
 import os
+import random
 import sys
 import time
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.." ))
 from shared.models import SensorReading, SENSOR_UNITS
+
+# Per-tick failure and recovery probabilities.
+# At a 5-second interval:
+#   _FAIL_PROB ≈ 0.01 % → a sensor fails roughly once every ~14 hours on average.
+#   _RECOVER_PROB ≈ 2 % → average offline duration ~50 ticks ≈ 4 minutes.
+_FAIL_PROB    = 0.0001
+_RECOVER_PROB = 0.02
 
 
 class BaseSensor(ABC):
@@ -28,13 +36,27 @@ class BaseSensor(ABC):
         self.room_type = room_type
         self.unit = SENSOR_UNITS[sensor_type]
         self._state: Dict[str, Any] = {}
+        self._offline: bool = False
 
     @abstractmethod
     def _sample(self, context: Dict[str, Any]) -> float:
         """Return the raw sensor value given environmental context."""
 
-    def read(self, context: Dict[str, Any]) -> SensorReading:
-        """Public API: generate a SensorReading with the current timestamp."""
+    def read(self, context: Dict[str, Any]) -> Optional[SensorReading]:
+        """
+        Generate a SensorReading for the current tick, or None when the
+        sensor is offline (simulating intermittent IoT dropout).
+        """
+        # Failure state machine
+        if self._offline:
+            if random.random() < _RECOVER_PROB:
+                self._offline = False
+            else:
+                return None          # no data published while offline
+        elif random.random() < _FAIL_PROB:
+            self._offline = True
+            return None
+
         value = self._sample(context)
         return SensorReading(
             sensor_id=self.sensor_id,

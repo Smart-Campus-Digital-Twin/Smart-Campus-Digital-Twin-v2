@@ -38,8 +38,8 @@ EXAM_SLOTS: List[Tuple[float, float]] = [
     (13.0, 16.0),   # afternoon exam session
 ]
 
-PRE_WINDOW:  float = 15 / 60   # ramp-up window before a slot  (hours)
-POST_WINDOW: float = 10 / 60   # drain window after a slot (hours)
+PRE_WINDOW:  float = 10 / 60   # ramp-up window before a slot  (hours)
+POST_WINDOW: float =  5 / 60   # drain window after a slot (hours)
 
 # Buildings where Saturday/Sunday classes run (IT and Architecture)
 WEEKEND_ACTIVE_BUILDINGS: FrozenSet[str] = frozenset({"faculty-it", "dept-design"})
@@ -58,19 +58,22 @@ def lecture_ratio(hour: float) -> float:
     """
     Target occupancy ratio for a classroom (0.0–0.88).
 
-    Uses max() over all slots so overlapping pre/post windows at slot
-    boundaries produce a smooth crossover rather than a hard jump.
+    Burst-fill model: t² ramp (slow start, rapid arrival just before the
+    slot) and (1-t)² drain (rapid emptying right after the slot ends).
+    Uses max() over all slots for smooth slot-boundary crossovers.
     """
     best = 0.0
     for start, end in LECTURE_SLOTS:
         pre  = start - PRE_WINDOW
         post = end   + POST_WINDOW
         if pre <= hour < start:
-            best = max(best, 0.88 * (hour - pre) / PRE_WINDOW)
+            t    = (hour - pre) / PRE_WINDOW          # 0→1, convex rise
+            best = max(best, 0.88 * t * t)
         elif start <= hour <= end:
-            return 0.88   # fully inside a slot — no need to check others
+            return 0.88
         elif end < hour < post:
-            best = max(best, 0.88 * (1.0 - (hour - end) / POST_WINDOW))
+            t    = (hour - end) / POST_WINDOW          # 0→1, fast initial drain
+            best = max(best, 0.88 * (1.0 - t) ** 2)
     return best
 
 

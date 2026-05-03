@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import random
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List, Optional, Set
 
 from simulator.sensors.occupancy import OccupancySensor
 
@@ -32,9 +32,10 @@ class ZoneContext:
     day_of_week: int                 # 0=Monday ... 6=Sunday
     is_holiday: bool                 # Sri Lanka public holiday
     academic_day: AcademicDay        # From AcademicCalendar (congestion, activity type)
-    active_venue_fill: Dict[str, float]  # From EventCalendar (events override)
-    building_id: str                 # Current building
-    room_id: str                     # Current room
+    active_venue_fill:  Dict[str, float]  # From EventCalendar (events override)
+    active_event_types: FrozenSet[str]   # Event types active this tick
+    building_id: str                     # Current building
+    room_id: str                         # Current room
 
     @property
     def is_weekend(self) -> bool:
@@ -135,6 +136,19 @@ class BaseZone(ABC):
         return None
 
 
+# ─── Event crowd redistribution ───────────────────────────────────────────────
+#
+# When a large event is active at one venue, non-venue buildings see a drain
+# (people leave classrooms for the career fair, etc.) or a boost (canteen gets
+# more traffic from event visitors).  Factors compound when multiple events run.
+_EVENT_CROWD_DRAIN: Dict[str, Dict[str, float]] = {
+    "career_fair":  {"classroom": 0.80, "lab": 0.85, "library": 0.90, "canteen": 1.10},
+    "symposium":    {"classroom": 0.90, "lab": 0.90, "canteen": 1.05},
+    "food_festival":{"classroom": 0.95, "library": 0.88, "office": 0.95},
+    "orientation":  {"classroom": 0.90, "library": 1.10},
+}
+
+
 # ─── Zone-specific Occupancy Sensor ───────────────────────────────────────────
 
 class ZoneOccupancySensor(OccupancySensor):
@@ -157,10 +171,11 @@ class ZoneOccupancySensor(OccupancySensor):
         # Convert dict context to ZoneContext
         from simulator.campus.academic_calendar import calendar
 
-        hour              = context.get("hour", 12.0)
-        dow               = context.get("day_of_week", 0)
-        is_holiday        = context.get("is_holiday", False)
-        active_venue_fill = context.get("active_venue_fill", {})
+        hour               = context.get("hour", 12.0)
+        dow                = context.get("day_of_week", 0)
+        is_holiday         = context.get("is_holiday", False)
+        active_venue_fill  = context.get("active_venue_fill", {})
+        active_event_types = frozenset(context.get("active_event_types", set()))
 
         academic_day = context.get("academic_day")
         if academic_day is None:
@@ -173,22 +188,30 @@ class ZoneOccupancySensor(OccupancySensor):
             is_holiday=is_holiday,
             academic_day=academic_day,
             active_venue_fill=active_venue_fill,
+            active_event_types=active_event_types,
             building_id=self.building_id,
             room_id=self.room_id,
         )
 
-        # Event override takes precedence
+        # Event venue override takes full precedence (this building is hosting)
         if self.building_id in active_venue_fill:
             ratio = active_venue_fill[self.building_id]
         else:
             ratio = self._compute_target_ratio(zone_ctx)
+
+            # Crowd redistribution: events at other venues draw people away
+            # (or boost traffic) in non-hosting buildings.
+            if active_event_types:
+                drain = 1.0
+                for evt_type in active_event_types:
+                    drain *= _EVENT_CROWD_DRAIN.get(evt_type, {}).get(self.room_type, 1.0)
+                ratio *= drain
 
         # Optional evening tutorial / club event (classrooms & labs only)
         if not zone_ctx.is_weekend and self.room_type in ("classroom", "lab"):
             if 17.25 <= hour < 21.0:
                 ratio = self._apply_evening_event(hour, ratio)
 
-        # Delegate noise + probabilistic flow to parent
         return self._apply_flow(ratio)
 
     def _apply_evening_event(self, hour: float, base: float) -> float:

@@ -96,6 +96,14 @@ class EventCalendar:
                     fill[bld] = max(fill.get(bld, 0.0), factor)
         return fill
 
+    def active_event_types(self, d: date, hour: float) -> set:
+        """Return the set of event_type strings active at `hour` on `d`."""
+        return {
+            evt.event_type
+            for evt in self.events_for_date(d)
+            if evt.is_active_at(hour)
+        }
+
     # ── Padura pre-schedule ─────────────────────────────────────────────────────
 
     def _build_padura_schedule(self, years) -> None:

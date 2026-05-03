@@ -39,9 +39,10 @@ class ClassroomZone(BaseZone):
         if hour >= 22.0 or hour < 6.0:
             return 0.0
 
-        # Holidays
+        # Holidays: a small residual of postgrad researchers and maintenance staff
+        # remain on campus even on public holidays.
         if ctx.is_holiday:
-            return 0.0
+            return 0.03
 
         # Weekends
         if ctx.is_weekend:
