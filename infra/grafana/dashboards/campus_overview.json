@@ -82,7 +82,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"campus_1m\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m\")\n  |> filter(fn: (r) => r.sensor_type == \"occupancy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> last()\n  |> mean()"
+          "query": "from(bucket: \"campus_1m\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m\")\n  |> filter(fn: (r) => r.sensor_type == \"occupancy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> last()\n  |> group()\n  |> mean()"
         }
       ]
     },
@@ -199,18 +199,19 @@
       "id": 8,
       "title": "Hourly Energy Trend (24h)",
       "type": "timeseries",
+      "timeFrom": "24h",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
       "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "fieldConfig": {
         "defaults": {
           "unit": "kwatt",
-          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "spanNulls": true, "showPoints": "always", "pointSize": 5 }
         }
       },
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"campus_1h\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1h\")\n  |> filter(fn: (r) => r.sensor_type == \"energy\")\n  |> filter(fn: (r) => r._field == \"sum_avg\")\n  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false)\n  |> group(columns: [\"building_id\"])"
+          "query": "from(bucket: \"campus_1h\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1h\")\n  |> filter(fn: (r) => r.sensor_type == \"energy\")\n  |> filter(fn: (r) => r._field == \"sum_avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false)"
         }
       ]
     },
@@ -218,18 +219,19 @@
       "id": 9,
       "title": "Daily Energy Summary (7 days)",
       "type": "timeseries",
+      "timeFrom": "7d",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
       "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "fieldConfig": {
         "defaults": {
           "unit": "kwatt",
-          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "spanNulls": true, "showPoints": "always", "pointSize": 5 }
         }
       },
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"campus_1d\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"sensor_1d\")\n  |> filter(fn: (r) => r.sensor_type == \"energy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false)\n  |> group(columns: [\"building_id\"])"
+          "query": "from(bucket: \"campus_1d\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"sensor_1d\")\n  |> filter(fn: (r) => r.sensor_type == \"energy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false)"
         }
       ]
     },
@@ -270,7 +272,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "buckets()\n  |> filter(fn: (r) => r.name == \"tasks\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"runs\")\n  |> filter(fn: (r) => r.task == \"downsample_1h_to_1d\")\n  |> last()\n  |> map(fn: (r) => ({r with _value: if exists r.success then 0.0 else 1.0}))"
+          "query": "import \"array\"\n\ndata = from(bucket: \"campus_1d\")\n  |> range(start: -25h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1d\")\n  |> group()\n  |> count()\n  |> findRecord(fn: (key) => true, idx: 0)\n\narray.from(rows: [{_time: now(), _value: if exists data._value then 0.0 else 1.0}])"
         }
       ]
     },
@@ -278,18 +280,19 @@
       "id": 11,
       "title": "Hourly Temperature Avg (24h)",
       "type": "timeseries",
+      "timeFrom": "24h",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 34 },
       "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "fieldConfig": {
         "defaults": {
           "unit": "celsius",
-          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "spanNulls": true, "showPoints": "always", "pointSize": 5 }
         }
       },
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"campus_1h\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1h\")\n  |> filter(fn: (r) => r.sensor_type == \"temperature\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)\n  |> group(columns: [\"building_id\"])"
+          "query": "from(bucket: \"campus_1h\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1h\")\n  |> filter(fn: (r) => r.sensor_type == \"temperature\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)"
         }
       ]
     },
@@ -297,12 +300,13 @@
       "id": 12,
       "title": "Daily Occupancy Avg (7 days)",
       "type": "timeseries",
+      "timeFrom": "7d",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 34 },
       "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
-          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "spanNulls": true, "showPoints": "always", "pointSize": 5 },
           "min": 0,
           "max": 100
         }
@@ -310,7 +314,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"campus_1d\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"sensor_1d\")\n  |> filter(fn: (r) => r.sensor_type == \"occupancy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)\n  |> group(columns: [\"building_id\"])"
+          "query": "from(bucket: \"campus_1d\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"sensor_1d\")\n  |> filter(fn: (r) => r.sensor_type == \"occupancy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)"
         }
       ]
     }

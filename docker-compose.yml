@@ -83,6 +83,7 @@ services:
     volumes:
       - kafka-data:/var/lib/kafka/data
     environment:
+      TZ: "Asia/Colombo"
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
@@ -349,6 +350,8 @@ services:
       kafka:
         condition: service_healthy
     command: ["--kafka.server=kafka:9092"]
+    environment:
+      - TZ=Asia/Colombo
     deploy:
       resources:
         limits:
@@ -390,6 +393,8 @@ services:
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=30d
       - --web.enable-lifecycle
+    environment:
+      - TZ=Asia/Colombo
     deploy:
       resources:
         limits:
