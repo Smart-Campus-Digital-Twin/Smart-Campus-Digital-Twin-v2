@@ -28,7 +28,7 @@ echo "==> InfluxDB is ready."
 # campus_1d   : 5 years — daily roll-ups, written by Spark DailyReportJob or Flux task
 # ------------------------------------------------------------------
 
-for BUCKET in "campus_raw:168h" "campus_1m:720h" "campus_1h:8760h" "campus_1d:43800h"; do
+for BUCKET in "campus_raw:168h" "campus_1m:720h" "campus_1h:8760h" "campus_1d:43800h" "campus_predictions:8760h"; do
     NAME="${BUCKET%%:*}"
     RETENTION="${BUCKET##*:}"
     # Retry bucket check to handle transient connection errors

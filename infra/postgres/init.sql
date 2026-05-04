@@ -118,29 +118,30 @@ CREATE INDEX IF NOT EXISTS idx_anomalies_severity
     ON anomalies (severity, detected_at DESC);
 
 
-CREATE TABLE IF NOT EXISTS ml_features (
-    -- One row per (week_start, room).
-    -- week_start is always a Monday (ISO week boundary).
-    week_start       DATE        NOT NULL,
-    room_id          TEXT        NOT NULL REFERENCES rooms(id),
-    building_id      TEXT        NOT NULL,
-    room_type        TEXT        NOT NULL,
+CREATE TABLE IF NOT EXISTS ml_energy_features (
+    -- One row per (date, building_id) for daily energy prediction
+    date             DATE        NOT NULL,
+    building_id      TEXT        NOT NULL REFERENCES buildings(id),
+    building_type    TEXT        NOT NULL,
+    total_capacity   INT,
+    n_rooms          INT,
     avg_occ_ratio    NUMERIC(5, 4)  CHECK (avg_occ_ratio BETWEEN 0 AND 1),
-    peak_occ_hour    INT            CHECK (peak_occ_hour BETWEEN 0 AND 23),
-    avg_temp_c       NUMERIC(6, 2),
+    is_weekend       BOOLEAN     NOT NULL,
+    is_holiday       BOOLEAN     NOT NULL,
+    holiday_name     TEXT,
     total_energy_kwh NUMERIC(12, 3),
     data_completeness NUMERIC(4, 3) CHECK (data_completeness BETWEEN 0 AND 1),
     written_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (week_start, room_id)
+    PRIMARY KEY (date, building_id)
 );
 
-COMMENT ON TABLE ml_features IS
-    'Weekly per-room feature vectors for ML model training and evaluation.
-     Written by Spark WeeklyMLFeaturesJob every Monday at 02:00.
+COMMENT ON TABLE ml_energy_features IS
+    'Daily per-building feature vectors for Energy ML model training and evaluation.
+     Written by Airflow DAGs.
      data_completeness = fraction of expected hourly windows that had data.';
 
-CREATE INDEX IF NOT EXISTS idx_ml_features_room_week
-    ON ml_features (room_id, week_start DESC);
+CREATE INDEX IF NOT EXISTS idx_ml_energy_features_bld_date
+    ON ml_energy_features (building_id, date DESC);
 
 
 -- ==========================================================================
@@ -188,14 +189,16 @@ CREATE TABLE IF NOT EXISTS energy_daily_staging (
     sample_hours INT
 );
 
-CREATE TABLE IF NOT EXISTS ml_features_staging (
-    week_start        DATE,
-    room_id           TEXT,
+CREATE TABLE IF NOT EXISTS ml_energy_features_staging (
+    date              DATE,
     building_id       TEXT,
-    room_type         TEXT,
+    building_type     TEXT,
+    total_capacity    INT,
+    n_rooms           INT,
     avg_occ_ratio     NUMERIC(5, 4),
-    peak_occ_hour     INT,
-    avg_temp_c        NUMERIC(6, 2),
+    is_weekend        BOOLEAN,
+    is_holiday        BOOLEAN,
+    holiday_name      TEXT,
     total_energy_kwh  NUMERIC(12, 3),
     data_completeness NUMERIC(4, 3)
 );

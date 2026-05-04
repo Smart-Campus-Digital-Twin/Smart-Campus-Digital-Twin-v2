@@ -32,6 +32,7 @@ volumes:
   airflow-logs:
   spark-work:
   prometheus-data:
+  mlflow-data:
 
 
 services:
@@ -306,12 +307,14 @@ services:
       - env/kafka.env
       - env/influxdb.env
       - env/postgres.env
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
     command: taskmanager
     deploy:
       resources:
         limits:
-          memory: 2G
-          cpus: "1.0"
+          memory: 4G
+          cpus: "2.0"
 
   # Submits all three PyFlink jobs once the cluster + dependencies are ready.
   flink-submit:
@@ -578,3 +581,106 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
+
+  # ==========================================================================
+  # Layer 11 — Machine Learning (MLflow, Training, Inference)
+  # ==========================================================================
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.10.2
+    container_name: campus-mlflow
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=sqlite:////mlflow/mlflow.db
+      - MLFLOW_ARTIFACT_ROOT=/mlflow/artifacts
+    # --serve-artifacts proxies all artifact uploads through the REST API (no
+    # direct filesystem access needed from training/inference containers).
+    # --artifacts-destination sets the actual on-disk location inside this container.
+    command: >
+      mlflow server
+        --backend-store-uri sqlite:////mlflow/mlflow.db
+        --artifacts-destination /mlflow/artifacts
+        --default-artifact-root mlflow-artifacts:/
+        --host 0.0.0.0
+        --port 5000
+        --serve-artifacts
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  # Stays alive so Airflow can docker exec into it for weekly kedro retraining.
+  # Bootstrap (first-time seeding) is run manually once:
+  #   docker exec campus-ml-training python /opt/campus/ml/bootstrap_training.py
+  ml-training:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+      target: training
+    container_name: campus-ml-training
+    restart: unless-stopped
+    networks: [campus]
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - .:/opt/campus
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - KEDRO_DISABLE_TELEMETRY=true
+      - PYTHONPATH=/opt/campus
+      - PYTHONWARNINGS=ignore
+      - GIT_PYTHON_REFRESH=quiet
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+
+  # Stays alive so Airflow can docker exec into it for daily batch inference.
+  ml-inference:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+      target: inference
+    container_name: campus-ml-inference
+    restart: unless-stopped
+    networks: [campus]
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    volumes:
+      - .:/opt/campus
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=campus
+    env_file:
+      - env/postgres.env
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"

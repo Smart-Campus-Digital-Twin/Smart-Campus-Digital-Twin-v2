@@ -2,6 +2,10 @@ jobmanager.rpc.address: flink-jobmanager
 jobmanager.rpc.port: 6123
 jobmanager.memory.process.size: 1024m
 taskmanager.memory.process.size: 2048m
+# Cap the Beam Python state cache — default 1 GB per worker causes OOM when
+# running 4 PyFlink jobs with ML model loading. 50 MB is enough since the
+# prediction job uses no Flink managed state (plain Python dicts).
+python.state.cache-size: 52428800
 taskmanager.numberOfTaskSlots: 8
 parallelism.default: 2
 state.backend: rocksdb

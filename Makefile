@@ -1,7 +1,7 @@
 # Smart Campus Digital Twin — development helpers
 # Requires: docker, docker-compose, python >= 3.12, kcat (optional)
 
-.PHONY: help env up down dev logs ps build test lint clean
+.PHONY: help env up down dev logs ps build test lint clean ml-bootstrap ml-train ml-status
 
 COMPOSE      = docker compose -f docker-compose.yml
 COMPOSE_DEV  = docker compose -f docker-compose.dev.yml
@@ -36,6 +36,34 @@ logs: ## Tail logs for all services
 
 ps: ## Show running containers and health
 	$(COMPOSE) ps
+
+##@ Machine Learning
+
+ml-bootstrap: ## Generate base datasets and train+promote all 3 models (first run)
+	@echo "Starting MLflow if not running..."
+	$(COMPOSE) up -d mlflow
+	@sleep 3
+	@echo "Running bootstrap training inside ml-training container..."
+	$(COMPOSE) run --rm ml-training \
+		python /opt/campus/ml/bootstrap_training.py
+	@echo ""
+	@echo "  ✓ Base models trained and promoted to Production."
+	@echo "  MLflow UI → http://localhost:5000"
+
+ml-train: ## Re-run all Kedro pipelines (re-training, no dataset regeneration)
+	$(COMPOSE) run --rm ml-training \
+		python /opt/campus/ml/bootstrap_training.py --skip-generate
+
+ml-status: ## Show current Production model versions in MLflow
+	$(COMPOSE) run --rm ml-training \
+		python -c "\
+import mlflow, os; \
+mlflow.set_tracking_uri(os.environ.get('MLFLOW_TRACKING_URI','http://mlflow:5000')); \
+client = mlflow.tracking.MlflowClient(); \
+[print(f'  {m}: v{v.version}  run={v.run_id[:8]}') \
+ for m in ['campus_canteen_congestion','campus_library_congestion','campus_energy_forecast'] \
+ for v in (client.get_latest_versions(m, stages=['Production']) or [{'version':'NONE','run_id':''}])]\
+"
 
 ##@ Dev (minimal — broker + databases only, run services on host)
 
