@@ -19,10 +19,15 @@ from pyspark.sql import DataFrame
 from processing.spark.config import config
 from shared.db import get_db_connection
 
-_JDBC_URL    = config.database_url.replace("postgresql://", "jdbc:postgresql://").split("?")[0]
 _JDBC_DRIVER = "org.postgresql.Driver"
 
 _parsed = urlparse(config.database_url)
+# Build JDBC URL without embedded credentials — pass user/password via properties instead,
+# because the PostgreSQL JDBC driver misparses "user:pass@host" as the hostname when both
+# URL credentials and property credentials are supplied simultaneously.
+_JDBC_URL = (
+    f"jdbc:postgresql://{_parsed.hostname}:{_parsed.port or 5432}{_parsed.path}"
+)
 _JDBC_PROPS: dict = {
     "user":     _parsed.username or "",
     "password": _parsed.password or "",

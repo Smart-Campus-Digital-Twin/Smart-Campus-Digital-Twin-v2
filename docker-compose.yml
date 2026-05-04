@@ -512,7 +512,7 @@ services:
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk
       PYSPARK_PYTHON: /usr/bin/python3.12
       PYSPARK_DRIVER_PYTHON: /home/airflow/.local/bin/python3.12
-      AIRFLOW_CONN_SPARK_DEFAULT: '{"conn_type": "spark", "host": "spark://spark-master", "port": 7077}'
+      AIRFLOW_CONN_SPARK_DEFAULT: '{"conn_type": "spark", "host": "spark-master", "port": 7077}'
     command: standalone
     volumes:
       - ./airflow/dags:/opt/airflow/dags:ro

@@ -83,7 +83,7 @@ _ZP: Dict[str, Tuple] = {
     "auditorium": (23.5, 2.5, 0.0,  7.5,  22.0, 20.0, 32.0),
     "library":    (22.5, 1.0, 0.0,  7.5,  20.0, 20.0, 30.0),
     "hostel":     (None, 0.5, 0.0,  None, None,  23.0, 35.0),
-    "outdoor":    (None, 0.0, 0.0,  None, None,  22.0, 38.0),
+    "outdoor":    (None, 0.0, 0.0,  None, None,  22.0, 36.0),
     "server_room":(21.0, 0.0, 0.0,  0.0,  24.0, 18.0, 24.0),
 }
 _DEFAULT_PROFILE = _ZP["classroom"]

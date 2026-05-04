@@ -55,7 +55,7 @@ _ANOMALY_CHECKPOINT_MS = 60_000
 _OUT_OF_ORDER_S        = 10
 _IDLE_TIMEOUT_S        = 30
 
-_EMA_ALPHA             = 0.1
+_EMA_ALPHA             = 0.3
 _STATE_TTL_HOURS       = 24
 
 

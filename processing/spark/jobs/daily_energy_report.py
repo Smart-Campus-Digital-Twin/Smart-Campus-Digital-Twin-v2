@@ -67,7 +67,7 @@ from(bucket: "{config.influxdb_bucket_1h}")
   |> filter(fn: (r) => r._measurement == "sensor_1h")
   |> filter(fn: (r) => r.sensor_type == "energy")
   |> pivot(
-       rowKey: ["_time", "building_id"],
+       rowKey: ["_time", "building_id", "room_id"],
        columnKey: ["_field"],
        valueColumn: "_value"
      )
@@ -98,9 +98,9 @@ from(bucket: "{config.influxdb_bucket_1h}")
             (F.sum("sum_avg") * 3600 / 1000).alias("total_kwh"),
             F.max("max").alias("peak_w"),
             F.mean("avg").alias("avg_w"),
-            F.count("_time").alias("sample_hours"),
+            F.countDistinct("_time").alias("sample_hours"),
         )
-        .withColumn("date", F.lit(date_label))
+        .withColumn("date", F.to_date(F.lit(date_label)))
     )
 
     write_energy_daily(daily)

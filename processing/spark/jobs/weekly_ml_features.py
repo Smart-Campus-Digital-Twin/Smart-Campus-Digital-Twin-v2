@@ -143,8 +143,8 @@ from(bucket: "{config.influxdb_bucket_1h}")
     window_spec = Window.partitionBy("room_id").orderBy(F.col("mean_occ").desc())
     peak_hour = (
         occ_by_hour
-        .withColumn("rank", F.rank().over(window_spec))
-        .filter(F.col("rank") == 1)
+        .withColumn("rn", F.row_number().over(window_spec))
+        .filter(F.col("rn") == 1)
         .select("room_id", F.col("hour_of_day").alias("peak_occ_hour"))
     )
 
@@ -152,8 +152,12 @@ from(bucket: "{config.influxdb_bucket_1h}")
         occ_with_capacity
         .groupBy("room_id")
         .agg(
-            # avg_occ_ratio = avg(occupancy) / room_capacity
-            (F.mean("avg") / F.first("capacity")).alias("avg_occ_ratio"),
+            # avg_occ_ratio = avg(occupancy) / room_capacity, clamped to [0, 1].
+            # capacity=0 rooms yield null (no meaningful ratio).
+            F.when(
+                F.first("capacity") > 0,
+                F.least(F.mean("avg") / F.first("capacity"), F.lit(1.0)),
+            ).alias("avg_occ_ratio"),
             F.count("_time").alias("occ_hours"),
         )
         .join(peak_hour, on="room_id", how="left")
@@ -173,7 +177,7 @@ from(bucket: "{config.influxdb_bucket_1h}")
         .join(all_hours,       on="room_id", how="left")
         .withColumn("data_completeness",
                     F.col("observed_hours") / F.lit(EXPECTED_HOURS))
-        .withColumn("week_start", F.lit(week_label))
+        .withColumn("week_start", F.to_date(F.lit(week_label)))
         .select(
             "week_start", "room_id", "building_id", "room_type",
             "avg_occ_ratio", "peak_occ_hour", "avg_temp_c",

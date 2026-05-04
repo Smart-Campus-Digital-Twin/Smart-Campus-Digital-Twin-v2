@@ -46,16 +46,16 @@ class EnergySensor(BaseSensor):
     # Per room-type night-standby loads (W) — canteen refrigeration, lab
     # equipment standby, and library emergency lighting differ significantly.
     _STANDBY: Dict[str, float] = {
-        "classroom":    20.0,
-        "lab":          35.0,   # equipment standby, ventilation
-        "office":       15.0,
+        "classroom":    45.0,   # security lighting + standby A/C compressor
+        "lab":          60.0,   # equipment standby, ventilation, fume hoods
+        "office":       35.0,   # PCs on standby, corridor lights
         "canteen":      80.0,   # refrigeration + emergency lighting
-        "auditorium":   30.0,
-        "hostel":       25.0,   # corridor + stairwell lighting
-        "library":      40.0,   # emergency/security lighting, a few PCs
+        "auditorium":   50.0,   # emergency lighting, AV standby
+        "hostel":       45.0,   # corridor + stairwell lighting, common area
+        "library":      60.0,   # emergency/security lighting, server PCs
         "server_room": 350.0,   # never really on standby
         "outdoor":       0.0,
-        "default":      20.0,
+        "default":      45.0,
     }
 
     def _sample(self, context: Dict[str, Any]) -> float:

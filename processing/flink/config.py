@@ -40,7 +40,7 @@ class FlinkConfig(BaseSettings):
 
     temp_high_threshold:    float = 38.0
     temp_low_threshold:     float = 14.0
-    energy_spike_factor:    float = 3.0
+    energy_spike_factor:    float = 5.0
     occupancy_cap_fraction: float = 1.05
 
     @field_validator("influxdb_token", "database_url")
