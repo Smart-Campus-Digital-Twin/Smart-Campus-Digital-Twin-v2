@@ -5,7 +5,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.." ))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from shared.models import SensorReading, SENSOR_UNITS
 
 # Per-tick failure and recovery probabilities.

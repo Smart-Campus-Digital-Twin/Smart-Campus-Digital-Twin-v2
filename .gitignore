@@ -1,8 +1,11 @@
-# Virtual environments
+# Virtual environments (project uses venv/, not env/)
 venv/
-env/
 ENV/
 .venv
+
+# Secret env files — only *.env.example files are committed
+env/*.env
+env/.env
 
 # Python bytecode and cache
 __pycache__/
@@ -74,5 +77,4 @@ logs/
 Thumbs.db
 
 # Docker
-.dockerignore
 docker-compose.override.yml

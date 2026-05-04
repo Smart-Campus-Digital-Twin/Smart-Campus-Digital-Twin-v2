@@ -1,0 +1,575 @@
+# Smart Campus Digital Twin — full pipeline stack
+#
+# Services (startup order):
+#   mosquitto → kafka → influxdb → postgres
+#   → bridge → flink-jobmanager → flink-taskmanager → flink-submit
+#   → spark-master → spark-worker → airflow → api → grafana
+#
+# Usage:
+#   cp env/*.env.example env/*.env   # then fill in real values
+#   make up                          # starts everything
+#   make logs                        # tail all logs
+#   make down                        # stop and remove containers
+
+# ---------------------------------------------------------------------------
+# Shared network — all services use the same bridge so they can reach each
+# other by container name (no need for port-forwarding between services).
+# ---------------------------------------------------------------------------
+networks:
+  campus:
+    driver: bridge
+
+# ---------------------------------------------------------------------------
+# Named volumes — persist data across container restarts.
+# ---------------------------------------------------------------------------
+volumes:
+  mosquitto-data:
+  kafka-data:
+  influxdb-data:
+  influxdb-config:
+  postgres-data:
+  grafana-data:
+  airflow-logs:
+  spark-work:
+  prometheus-data:
+
+
+services:
+
+  # ==========================================================================
+  # Layer 1 — Message broker
+  # ==========================================================================
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: campus-mosquitto
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:1883:1883"    # MQTT — local only; not exposed externally
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/init-passwd.sh:/init-passwd.sh:ro
+      - mosquitto-data:/mosquitto/data
+    env_file: [env/mosquitto.env]
+    entrypoint: ["/bin/sh", "/init-passwd.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -t health -m ping -u $$MQTT_USERNAME -P $$MQTT_PASSWORD"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================================================
+  # Layer 2 — Kafka (KRaft mode, no Zookeeper)
+  # ==========================================================================
+
+  kafka:
+    image: apache/kafka:3.7.1
+    container_name: campus-kafka
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:9092:9092"    # local tooling only
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_RETENTION_MS: 604800000      # 7 days
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"  # topics created explicitly below
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"    # stable random ID for KRaft
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  kafka-init:
+    image: apache/kafka:3.7.1
+    container_name: campus-kafka-init
+    networks: [campus]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    env_file: [env/kafka.env]
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        BS=kafka:9092
+        create() {
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server $$BS --create --if-not-exists \
+            --topic "$$1" --partitions "$$2" --replication-factor 1 \
+            --config retention.ms=$$KAFKA_RETENTION_MS
+        }
+        create sensors.temperature  $$KAFKA_PARTITIONS
+        create sensors.occupancy    $$KAFKA_PARTITIONS
+        create sensors.energy       $$KAFKA_PARTITIONS
+        create sensors.aggregated   $$KAFKA_PARTITIONS
+        create sensors.dlq          1
+        create alerts.anomalies     1
+        echo "All topics created."
+    restart: "no"
+
+  # ==========================================================================
+  # Layer 3 — Time-series database
+  # ==========================================================================
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: campus-influxdb
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:8086:8086"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+      - ./infra/influxdb/setup.sh:/influxdb-setup/setup.sh:ro
+      - ./infra/influxdb/tasks:/influxdb-setup/tasks:ro
+    env_file: [env/influxdb.env]
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  # Creates the extra buckets (campus_1m, campus_1h, campus_1d) after InfluxDB is healthy.
+  influxdb-init:
+    image: influxdb:2.7
+    container_name: campus-influxdb-init
+    networks: [campus]
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    env_file: [env/influxdb.env]
+    volumes:
+      - ./infra/influxdb/setup.sh:/influxdb-setup/setup.sh:ro
+      - ./infra/influxdb/tasks:/influxdb-setup/tasks:ro
+    entrypoint: ["/bin/bash", "/influxdb-setup/setup.sh"]
+    restart: "no"
+
+  # ==========================================================================
+  # Layer 4 — Relational database
+  # ==========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: campus-postgres
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:5432:5432"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    env_file: [env/postgres.env]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ==========================================================================
+  # Layer 5a — Simulator (sensor data generator)
+  # ==========================================================================
+
+  simulator:
+    build:
+      context: .
+      dockerfile: simulator/Dockerfile
+    container_name: campus-simulator
+    restart: unless-stopped
+    networks: [campus]
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    env_file: [env/mosquitto.env]
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+      LOG_LEVEL: INFO
+      ANOMALY_INJECTION_ENABLED: "true"
+      ANOMALY_INJECTION_PROB: "0.01"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  # ==========================================================================
+  # Layer 5b — Bridge: MQTT → Kafka
+  # ==========================================================================
+
+  bridge:
+    build:
+      context: .
+      dockerfile: bridge/Dockerfile
+    container_name: campus-bridge
+    restart: unless-stopped
+    networks: [campus]
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    env_file:
+      - env/mosquitto.env
+      - env/kafka.env
+    environment:
+      LOG_LEVEL: INFO
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+  # ==========================================================================
+  # Layer 6 — Flink cluster + job submission
+  # ==========================================================================
+
+  flink-jobmanager:
+    build:
+      context: .
+      dockerfile: processing/flink/Dockerfile
+      target: cluster
+    container_name: campus-flink-jm
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:8081:8081"    # Flink Web UI — local only
+      - "127.0.0.1:9249:9249"    # Prometheus metrics
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+    volumes:
+      - ./infra/flink/flink-conf.yaml:/opt/flink/conf/flink-conf.yaml:ro
+    env_file:
+      - env/kafka.env
+      - env/influxdb.env
+      - env/postgres.env
+    command: jobmanager
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8081/overview"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  flink-taskmanager:
+    build:
+      context: .
+      dockerfile: processing/flink/Dockerfile
+      target: cluster
+    container_name: campus-flink-tm
+    restart: unless-stopped
+    networks: [campus]
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+    volumes:
+      - ./infra/flink/flink-conf.yaml:/opt/flink/conf/flink-conf.yaml:ro
+    env_file:
+      - env/kafka.env
+      - env/influxdb.env
+      - env/postgres.env
+    command: taskmanager
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+
+  # Submits all three PyFlink jobs once the cluster + dependencies are ready.
+  flink-submit:
+    build:
+      context: .
+      dockerfile: processing/flink/Dockerfile
+    container_name: campus-flink-submit
+    networks: [campus]
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      influxdb-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    env_file:
+      - env/kafka.env
+      - env/influxdb.env
+      - env/postgres.env
+    environment:
+      FLINK_MASTER: flink-jobmanager:8081
+    restart: "no"
+
+  # ==========================================================================
+  # Layer 6b — Observability exporters (Prometheus scrape targets)
+  # ==========================================================================
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.8.0
+    container_name: campus-kafka-exporter
+    restart: unless-stopped
+    networks: [campus]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: ["--kafka.server=kafka:9092"]
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.2"
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: campus-postgres-exporter
+    restart: unless-stopped
+    networks: [campus]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: [env/postgres.env]
+    # DATA_SOURCE_NAME is read from env/postgres.env
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.2"
+
+  # ==========================================================================
+  # Layer 6c — Prometheus (metrics store)
+  # ==========================================================================
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: campus-prometheus
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-lifecycle
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================================================
+  # Layer 7 — Spark cluster
+  # ==========================================================================
+
+  spark-master:
+    build:
+      context: .
+      dockerfile: infra/spark/Dockerfile
+      target: cluster
+    container_name: campus-spark-master
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:8080:8080"    # Spark Web UI — local only
+      - "127.0.0.1:7077:7077"    # Spark master — local only
+    env_file:
+      - env/postgres.env
+      - env/influxdb.env
+      - env/kafka.env
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    command:
+      - /opt/spark/bin/spark-class
+      - org.apache.spark.deploy.master.Master
+      - --host
+      - spark-master
+      - --port
+      - "7077"
+      - --webui-port
+      - "8080"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  spark-worker:
+    build:
+      context: .
+      dockerfile: infra/spark/Dockerfile
+      target: cluster
+    container_name: campus-spark-worker
+    restart: unless-stopped
+    networks: [campus]
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    env_file:
+      - env/postgres.env
+      - env/influxdb.env
+      - env/kafka.env
+    user: root
+    command:
+      - bash
+      - -c
+      - |
+        chown -R 185:185 /opt/spark/work && \
+        exec gosu spark /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    environment:
+      SPARK_WORKER_MEMORY: 2G
+      SPARK_WORKER_CORES: 2
+    volumes:
+      - spark-work:/opt/spark/work
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # ==========================================================================
+  # Layer 8 — Airflow (batch scheduler)
+  # ==========================================================================
+
+  airflow:
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
+    container_name: campus-airflow
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:8082:8080"    # Airflow Web UI — local only
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      spark-master:
+        condition: service_healthy
+    env_file:
+      - env/postgres.env
+      - env/influxdb.env
+      - env/airflow.env
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__PARALLELISM: "2"
+      AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "1"
+      AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "1"
+      AIRFLOW__WEBSERVER__WORKERS: "2"
+      SPARK_MASTER_URL: spark://spark-master:7077
+      PYTHONPATH: /opt/campus:/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.9-src.zip
+      SPARK_HOME: /opt/spark
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk
+      PYSPARK_PYTHON: /usr/bin/python3.12
+      PYSPARK_DRIVER_PYTHON: /home/airflow/.local/bin/python3.12
+      AIRFLOW_CONN_SPARK_DEFAULT: '{"conn_type": "spark", "host": "spark://spark-master", "port": 7077}'
+    command: standalone
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags:ro
+      - .:/opt/campus:ro
+      - airflow-logs:/opt/airflow/logs
+
+  # ==========================================================================
+  # Layer 9 — FastAPI backend
+  # ==========================================================================
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: campus-api
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    env_file:
+      - env/influxdb.env
+      - env/postgres.env
+      - env/api.env
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  # ==========================================================================
+  # Layer 10 — Grafana dashboards
+  # ==========================================================================
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: campus-grafana
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "3000:3000"
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    env_file: [env/grafana.env]
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10

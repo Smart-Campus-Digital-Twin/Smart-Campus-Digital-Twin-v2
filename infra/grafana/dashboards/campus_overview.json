@@ -1,0 +1,328 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "11.0.0" },
+    { "type": "datasource", "id": "influxdb", "name": "InfluxDB", "version": "1.0.0" },
+    { "type": "datasource", "id": "postgres", "name": "PostgreSQL", "version": "1.0.0" }
+  ],
+  "annotations": { "list": [] },
+  "description": "Real-time campus-wide sensor overview",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Live Sensor Count",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"campus_raw\")\n  |> range(start: -1m)\n  |> filter(fn: (r) => r._measurement == \"sensors\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> group(columns: [\"room_id\", \"sensor_type\"])\n  |> last()\n  |> group()\n  |> count()"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Campus Total Power (kW)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "watt", "decimals": 1 }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"campus_raw\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"sensors\")\n  |> filter(fn: (r) => r.sensor_type == \"energy\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> last()\n  |> sum()"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Campus Average Occupancy %",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "minVizWidth": 75,
+        "minVizHeight": 75
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0, "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red",    "value": 90 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"campus_1m\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m\")\n  |> filter(fn: (r) => r.sensor_type == \"occupancy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> last()\n  |> mean()"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Active Anomalies (last 1h)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "PCC52D03280B7034C" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red",    "value": 5 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawSql": "SELECT COUNT(*) as count FROM anomalies WHERE detected_at > NOW() - INTERVAL '1 hour'",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Temperature — All Rooms (last 30 min)",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": { "lineWidth": 1, "fillOpacity": 0 }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"campus_1m\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m\")\n  |> filter(fn: (r) => r.sensor_type == \"temperature\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> keep(columns: [\"_time\", \"_value\", \"room_id\"])"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Energy by Building (last 30 min)",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": { "lineWidth": 2 }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"campus_1m\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m\")\n  |> filter(fn: (r) => r.sensor_type == \"energy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: 1m, fn: sum, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"building_id\"])"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Recent Anomalies",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "datasource": { "type": "postgres", "uid": "PCC52D03280B7034C" },
+      "options": {
+        "sortBy": [{ "displayName": "detected_at", "desc": true }],
+        "footer": { "show": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawSql": "SELECT detected_at, building_id, room_id, sensor_type, anomaly_type, severity, value, threshold, message FROM anomalies ORDER BY detected_at DESC LIMIT 50",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "severity" },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  { "options": { "critical": { "color": "red",    "index": 0 },
+                                  "warning":  { "color": "yellow", "index": 1 },
+                                  "info":     { "color": "blue",   "index": 2 } },
+                    "type": "value" }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "title": "Hourly Energy Trend (24h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatt",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"campus_1h\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1h\")\n  |> filter(fn: (r) => r.sensor_type == \"energy\")\n  |> filter(fn: (r) => r._field == \"sum_avg\")\n  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false)\n  |> group(columns: [\"building_id\"])"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Daily Energy Summary (7 days)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatt",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"campus_1d\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"sensor_1d\")\n  |> filter(fn: (r) => r.sensor_type == \"energy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false)\n  |> group(columns: [\"building_id\"])"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Flux Task Status",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 30 },
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "from": 0,
+                "result": { "text": "Running", "color": "green" },
+                "to": 0.1
+              },
+              "type": "range"
+            },
+            {
+              "options": {
+                "from": 0.1,
+                "result": { "text": "Stopped", "color": "red" },
+                "to": 1
+              },
+              "type": "range"
+            }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "buckets()\n  |> filter(fn: (r) => r.name == \"tasks\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"runs\")\n  |> filter(fn: (r) => r.task == \"downsample_1h_to_1d\")\n  |> last()\n  |> map(fn: (r) => ({r with _value: if exists r.success then 0.0 else 1.0}))"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Hourly Temperature Avg (24h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 34 },
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"campus_1h\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1h\")\n  |> filter(fn: (r) => r.sensor_type == \"temperature\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)\n  |> group(columns: [\"building_id\"])"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Daily Occupancy Avg (7 days)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 34 },
+      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "min": 0,
+          "max": 100
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"campus_1d\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"sensor_1d\")\n  |> filter(fn: (r) => r.sensor_type == \"occupancy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)\n  |> group(columns: [\"building_id\"])"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["campus", "overview", "realtime"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {},
+  "timezone": "Asia/Colombo",
+  "title": "Campus Overview",
+  "uid": "campus-overview",
+  "version": 1
+}

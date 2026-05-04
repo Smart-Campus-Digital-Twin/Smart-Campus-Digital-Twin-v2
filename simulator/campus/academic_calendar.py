@@ -133,8 +133,16 @@ class _Period:
 
 def _load_academic_calendar():
     path = os.path.join(_DATA_DIR, "academic_calendar.yaml")
-    with open(path, encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = yaml.safe_load(f)
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(
+            f"Academic calendar data file not found at {path}. "
+            "Ensure simulator/campus/data/academic_calendar.yaml exists."
+        ) from exc
+    if not isinstance(raw, dict):
+        raise ValueError(f"academic_calendar.yaml did not parse to a dict: {path}")
 
     monthly: Dict[int, Dict[int, float]] = {}
     for year, months in raw.get("monthly_baseline", {}).items():

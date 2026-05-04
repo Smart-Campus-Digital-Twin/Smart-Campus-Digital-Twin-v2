@@ -7,7 +7,7 @@ load_dotenv()
 
 @dataclass(frozen=True)
 class SimulatorConfig:
-    mqtt_host:       str   = os.getenv("MQTT_HOST", "localhost")
+    mqtt_host:       str   = os.getenv("MQTT_HOST", "mosquitto")
     mqtt_port:       int   = int(os.getenv("MQTT_PORT", "1883"))
     mqtt_keepalive:  int   = int(os.getenv("MQTT_KEEPALIVE", "60"))
     publish_interval_s: float = float(os.getenv("PUBLISH_INTERVAL_S", "5.0"))

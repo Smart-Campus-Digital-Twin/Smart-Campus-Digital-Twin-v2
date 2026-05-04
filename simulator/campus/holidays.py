@@ -18,8 +18,16 @@ _DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 def _load_holidays() -> Dict[int, FrozenSet[date]]:
     path = os.path.join(_DATA_DIR, "holidays.yaml")
-    with open(path, encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = yaml.safe_load(f)
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(
+            f"Holidays data file not found at {path}. "
+            "Ensure simulator/campus/data/holidays.yaml exists."
+        ) from exc
+    if not isinstance(raw, dict):
+        raise ValueError(f"holidays.yaml did not parse to a dict: {path}")
     by_year: Dict[int, FrozenSet[date]] = {}
     for year, entries in raw.get("holidays", {}).items():
         by_year[int(year)] = frozenset(date.fromisoformat(e["date"]) for e in entries)

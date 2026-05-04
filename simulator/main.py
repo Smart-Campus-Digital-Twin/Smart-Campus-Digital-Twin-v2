@@ -17,15 +17,13 @@ Architecture
   - Zones create their own sensors (temperature, occupancy, energy)
   - Zones apply academic calendar congestion to their occupancy patterns
 """
-import os
+from __future__ import annotations
+
 import signal
-import sys
 import time
 from datetime import date as dt_date, datetime
 from typing import Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from shared.logging_config import get_logger
 from simulator.campus.academic_calendar import AcademicCalendar, calendar as academic_calendar
@@ -35,6 +33,7 @@ from simulator.campus.topology import CampusTopology, Room
 from simulator.config import config
 from simulator.publisher import MQTTPublisher
 from simulator.sensors.base import BaseSensor
+from simulator.anomaly_injector import inject_if_enabled
 from simulator.sensors.occupancy import OccupancySensor
 from simulator.zones import BaseZone, get_zone_for_room_type
 
@@ -145,6 +144,8 @@ def main() -> None:
                 room_ctx = {**ctx, "occupancy_ratio": occ_readings.get(room.room_id, 0.0)}
                 reading  = sensor.read(room_ctx)
             if reading is not None:
+                # Inject anomalies if enabled
+                reading = inject_if_enabled(reading)
                 publisher.publish(reading)
                 reading_count += 1
 

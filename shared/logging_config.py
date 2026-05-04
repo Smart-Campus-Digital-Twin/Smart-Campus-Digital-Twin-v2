@@ -1,5 +1,10 @@
+"""Structured JSON logging configuration shared by all services."""
+
+from __future__ import annotations
+
 import json
 import logging
+
 
 _STANDARD_LOG_ATTRS = frozenset({
     "args", "created", "exc_info", "exc_text", "filename", "funcName",
@@ -8,29 +13,44 @@ _STANDARD_LOG_ATTRS = frozenset({
     "stack_info", "thread", "threadName", "taskName",
 })
 
+_THIRD_PARTY_LOGGERS = (
+    "kafka", "aiokafka", "urllib3", "pyflink", "py4j",
+    "pyspark", "influxdb_client", "asyncio",
+)
 
-class _StructuredFormatter(logging.Formatter):
-    """Single-line structured formatter: timestamp  LEVEL  name  message  {extra JSON}"""
+
+class _JsonFormatter(logging.Formatter):
+    """Emits every log record as a single JSON object for zero-config ELK ingestion."""
 
     def format(self, record: logging.LogRecord) -> str:
+        """Serialise the full log record to JSON."""
         record.message = record.getMessage()
-        ts = self.formatTime(record, self.datefmt)
-        parts = [f"{ts}  {record.levelname:<8}  {record.name}  {record.message}"]
-        extra = {k: v for k, v in record.__dict__.items() if k not in _STANDARD_LOG_ATTRS}
-        if extra:
-            parts.append(json.dumps(extra, default=str))
+        obj: dict = {
+            "ts":    self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "name":  record.name,
+            "msg":   record.message,
+        }
+        extra = {
+            k: v for k, v in record.__dict__.items()
+            if k not in _STANDARD_LOG_ATTRS
+        }
+        obj.update(extra)
         if record.exc_info:
-            parts.append(self.formatException(record.exc_info))
-        return "  ".join(parts)
+            obj["exc"] = self.formatException(record.exc_info)
+        return json.dumps(obj, default=str)
 
 
 def get_logger(name: str, level: str = "INFO") -> logging.Logger:
+    """Return a named logger with a JSON formatter attached exactly once."""
     logger = logging.getLogger(name)
     if logger.handlers:
         return logger
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
     handler = logging.StreamHandler()
-    handler.setFormatter(_StructuredFormatter(datefmt="%Y-%m-%dT%H:%M:%S"))
+    handler.setFormatter(_JsonFormatter(datefmt="%Y-%m-%dT%H:%M:%SZ"))
     logger.addHandler(handler)
     logger.propagate = False
+    for lib in _THIRD_PARTY_LOGGERS:
+        logging.getLogger(lib).setLevel(logging.WARNING)
     return logger
