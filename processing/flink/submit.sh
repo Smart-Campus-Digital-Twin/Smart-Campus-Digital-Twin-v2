@@ -29,6 +29,7 @@ wait_for_flink
 submit kafka_to_influx
 submit window_agg
 submit anomaly
+submit prediction
 
 # Wait for all submissions to complete
 wait

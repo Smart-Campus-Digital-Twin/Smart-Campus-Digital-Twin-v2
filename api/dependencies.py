@@ -10,17 +10,19 @@ via FastAPI's Depends() mechanism.  This means:
 
 from __future__ import annotations
 
-from api.clients import InfluxAPIClient, PostgresClient
+from api.clients import InfluxAPIClient, PostgresClient, RedisCache
 
 # Module-level singletons — initialised in api/main.py lifespan handler
 _influx:   InfluxAPIClient | None = None
 _postgres: PostgresClient  | None = None
+_redis:    RedisCache      | None = None
 
 
-def set_clients(influx: InfluxAPIClient, postgres: PostgresClient) -> None:
-    global _influx, _postgres
+def set_clients(influx: InfluxAPIClient, postgres: PostgresClient, redis: RedisCache) -> None:
+    global _influx, _postgres, _redis
     _influx   = influx
     _postgres = postgres
+    _redis    = redis
 
 
 def get_influx() -> InfluxAPIClient:
@@ -31,3 +33,8 @@ def get_influx() -> InfluxAPIClient:
 def get_postgres() -> PostgresClient:
     assert _postgres is not None, "PostgreSQL client not initialised"
     return _postgres
+
+
+def get_redis() -> RedisCache:
+    assert _redis is not None, "Redis cache not initialised"
+    return _redis

@@ -78,3 +78,6 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# Generated documentation
+ARCHITECTURE_COMPREHENSIVE.md

@@ -170,19 +170,27 @@ class SensorReading(BaseModel):
             "quality": self.quality,
         }
 
-    def to_line_protocol(self, measurement: str = "sensors") -> str:
+    def to_line_protocol(self, measurement: str | None = None) -> str:
         """
         InfluxDB line protocol for direct HTTP batch writes.
 
-            measurement,tag=v field=v timestamp_ns
-
-        InfluxDB expects nanosecond precision; multiply ts (ms) by 1_000_000.
+        Measurement defaults to ``sensor_{sensor_type}`` so each type lives in its
+        own InfluxDB measurement and can use the correct field type:
+          sensor_occupancy  → value written as Int64  (no decimal people-counts)
+          sensor_temperature / sensor_energy → value written as Float64
         """
+        if measurement is None:
+            measurement = f"sensor_{self.sensor_type}"
         tags   = ",".join(f"{k}={v}" for k, v in self.influx_tags.items())
-        fields = ",".join(
-            f'{k}="{v}"' if isinstance(v, str) else f"{k}={v}"
-            for k, v in self.influx_fields.items()
-        )
+        fields_parts: list[str] = []
+        for k, v in self.influx_fields.items():
+            if isinstance(v, str):
+                fields_parts.append(f'{k}="{v}"')
+            elif k == "value" and self.sensor_type == SensorType.OCCUPANCY:
+                fields_parts.append(f"{k}={int(round(v))}i")
+            else:
+                fields_parts.append(f"{k}={v}")
+        fields = ",".join(fields_parts)
         ts_ns  = self.ts * 1_000_000
         return f"{measurement},{tags} {fields} {ts_ns}"
 

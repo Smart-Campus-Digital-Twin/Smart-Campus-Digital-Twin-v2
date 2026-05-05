@@ -36,7 +36,7 @@ def build_kafka_source(topics: list[str], group_id_suffix: str) -> KafkaSource:
         .set_bootstrap_servers(config.kafka_bootstrap_servers)
         .set_topics(*topics)
         .set_group_id(f"{config.kafka_group_id_prefix}-{group_id_suffix}")
-        .set_starting_offsets(KafkaOffsetsInitializer.earliest())
+        .set_starting_offsets(KafkaOffsetsInitializer.latest())
         .set_value_only_deserializer(SimpleStringSchema())
     )
     if config.kafka_security_protocol.upper() in ("SASL_PLAINTEXT", "SASL_SSL"):

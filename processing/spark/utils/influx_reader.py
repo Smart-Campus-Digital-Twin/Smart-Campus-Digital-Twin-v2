@@ -69,7 +69,7 @@ class InfluxReader:
         flux = f"""
 from(bucket: "{bucket}")
   |> range(start: {start_rfc}, stop: {stop_rfc})
-  |> filter(fn: (r) => r._measurement == "sensor_1m")
+  |> filter(fn: (r) => r._measurement =~ /^sensor_1m_/)
   {type_filter}
   |> pivot(
        rowKey: ["_time", "building_id", "floor", "room_id", "sensor_type"],

@@ -2,8 +2,22 @@
 # Pipeline health check — run from the project root.
 # Exit code 0 = all checks passed, 1 = one or more failed.
 
-INFLUX_TOKEN="bc9e661683cdd291830845f54875cf85f90cf937b5b191f4aba422bc61a8384b"
-INFLUX_ORG="smart-campus"
+# Load env defaults (dev)
+if [ -f env/influxdb.env ]; then
+    set -a
+    . env/influxdb.env
+    set +a
+fi
+
+INFLUX_TOKEN="${INFLUXDB_TOKEN:-}"
+INFLUX_ORG="${INFLUXDB_ORG:-smart-campus}"
+if [ -z "${KONG_PROXY_HOST_PORT:-}" ]; then
+    detected=$(docker compose port kong 8000 2>/dev/null | tail -n 1 | awk -F: '{print $2}')
+    KONG_PROXY_HOST_PORT="${detected:-8002}"
+else
+    KONG_PROXY_HOST_PORT="${KONG_PROXY_HOST_PORT}"
+fi
+
 PASS=0; FAIL=0
 
 ok()   { echo "  [OK]  $*"; PASS=$((PASS+1)); }
@@ -68,6 +82,9 @@ fi
 # 4. InfluxDB — data in each bucket within the last hour
 # ---------------------------------------------------------------------------
 hdr "4. InfluxDB buckets"
+if [ -z "$INFLUX_TOKEN" ]; then
+    fail "INFLUXDB_TOKEN not set (env/influxdb.env)"
+else
 influx_has_data() {
     local bucket="$1" measurement="$2"
     local lines
@@ -93,6 +110,7 @@ for check in "campus_raw:sensors:-1h" "campus_1m:sensor_1m:-1h" "campus_1h:senso
         fail "$bucket.$meas — no data in $window window"
     fi
 done
+fi
 
 
 # ---------------------------------------------------------------------------
@@ -114,9 +132,9 @@ EDAILY=$(pg "SELECT COUNT(*) FROM energy_daily")
 [ "${EDAILY:-0}" -gt 0 ] && ok "energy_daily: $EDAILY rows" \
     || fail "energy_daily: 0 rows (daily_reports job hasn't written yet)"
 
-MLB=$(pg "SELECT COUNT(*) FROM ml_features")
-[ "${MLB:-0}" -gt 0 ] && ok "ml_features: $MLB rows" \
-    || fail "ml_features: 0 rows (weekly_ml_features job hasn't written yet)"
+MLB=$(pg "SELECT COUNT(*) FROM ml_energy_features")
+[ "${MLB:-0}" -gt 0 ] && ok "ml_energy_features: $MLB rows" \
+    || fail "ml_energy_features: 0 rows (weekly_ml_features job hasn't written yet)"
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +168,14 @@ done
 # 7. API health endpoint
 # ---------------------------------------------------------------------------
 hdr "7. API"
-HEALTH=$(curl -sf http://localhost:8000/health 2>/dev/null || echo "{}")
+TOKEN=""
+if [ -x scripts/get_token.sh ]; then
+    TOKEN=$(scripts/get_token.sh 2>/dev/null || echo "")
+fi
+
+HEALTH=$(curl -sf \
+  -H "Authorization: Bearer ${TOKEN}" \
+  "http://localhost:${KONG_PROXY_HOST_PORT}/health" 2>/dev/null || echo "{}")
 STATUS=$(echo "$HEALTH" | python3 -c "
 import sys, json
 try:
@@ -161,9 +186,13 @@ except Exception as e:
     print('fail:' + str(e))
 " 2>/dev/null)
 if [ "$STATUS" = "ok" ]; then
-    ok "API /health → $HEALTH"
+    ok "Kong→API /health → $HEALTH"
 else
-    fail "API /health → $STATUS"
+    if [ -z "$TOKEN" ]; then
+        fail "Kong→API /health → missing token (scripts/get_token.sh failed?)"
+    else
+        fail "Kong→API /health → $STATUS"
+    fi
 fi
 
 
@@ -171,7 +200,7 @@ fi
 # 8. Grafana reachability
 # ---------------------------------------------------------------------------
 hdr "8. Grafana"
-HTTP=$(curl -so /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null || echo 000)
+HTTP=$(curl -so /dev/null -w "%{http_code}" http://localhost:3002/api/health 2>/dev/null || echo 000)
 [ "$HTTP" = "200" ] && ok "Grafana /api/health → 200" || fail "Grafana /api/health → $HTTP"
 
 
