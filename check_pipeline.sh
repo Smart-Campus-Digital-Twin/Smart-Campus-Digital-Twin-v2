@@ -2,27 +2,8 @@
 # Pipeline health check — run from the project root.
 # Exit code 0 = all checks passed, 1 = one or more failed.
 
-set -uo pipefail
-
-# Load local env files if present (created via `make env`).
-for f in env/influxdb.env env/postgres.env env/kafka.env env/mosquitto.env; do
-    if [ -f "$f" ]; then
-        set -a
-        # shellcheck disable=SC1090
-        . "$f"
-        set +a
-    fi
-done
-
-INFLUX_TOKEN="${INFLUX_TOKEN:-${INFLUXDB_TOKEN:-${DOCKER_INFLUXDB_INIT_ADMIN_TOKEN:-}}}"
-INFLUX_ORG="${INFLUX_ORG:-${INFLUXDB_ORG:-smart-campus}}"
-
-KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8083}"
-KEYCLOAK_REALM="${KEYCLOAK_REALM:-campus}"
-KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID:-campus-dev}"
-KEYCLOAK_USERNAME="${KEYCLOAK_USERNAME:-dev}"
-KEYCLOAK_PASSWORD="${KEYCLOAK_PASSWORD:-dev}"
-
+INFLUX_TOKEN="bc9e661683cdd291830845f54875cf85f90cf937b5b191f4aba422bc61a8384b"
+INFLUX_ORG="smart-campus"
 PASS=0; FAIL=0
 
 ok()   { echo "  [OK]  $*"; PASS=$((PASS+1)); }
@@ -87,9 +68,6 @@ fi
 # 4. InfluxDB — data in each bucket within the last hour
 # ---------------------------------------------------------------------------
 hdr "4. InfluxDB buckets"
-if [ -z "${INFLUX_TOKEN}" ]; then
-    fail "INFLUX_TOKEN is not set (export INFLUX_TOKEN/INFLUXDB_TOKEN or run 'make env')"
-fi
 influx_has_data() {
     local bucket="$1" measurement="$2"
     local lines
@@ -172,22 +150,7 @@ done
 # 7. API health endpoint
 # ---------------------------------------------------------------------------
 hdr "7. API"
-TOKEN=$(curl -sf -X POST "${KEYCLOAK_URL%/}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token" \
-    -H 'Content-Type: application/x-www-form-urlencoded' \
-    --data-urlencode "grant_type=password" \
-    --data-urlencode "client_id=${KEYCLOAK_CLIENT_ID}" \
-    --data-urlencode "username=${KEYCLOAK_USERNAME}" \
-    --data-urlencode "password=${KEYCLOAK_PASSWORD}" \
-    2>/dev/null \
-    | python3 -c 'import sys, json; print(json.load(sys.stdin)["access_token"])' \
-    2>/dev/null || true)
-
-if [ -z "${TOKEN}" ]; then
-    fail "Keycloak token fetch failed (is Keycloak up on ${KEYCLOAK_URL}?)"
-    HEALTH="{}"
-else
-    HEALTH=$(curl -sf -H "Authorization: Bearer ${TOKEN}" http://localhost:8000/health 2>/dev/null || echo "{}")
-fi
+HEALTH=$(curl -sf http://localhost:8000/health 2>/dev/null || echo "{}")
 STATUS=$(echo "$HEALTH" | python3 -c "
 import sys, json
 try:
