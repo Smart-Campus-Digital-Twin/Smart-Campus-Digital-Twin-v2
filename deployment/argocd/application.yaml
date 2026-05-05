@@ -10,7 +10,7 @@ spec:
 
   source:
     repoURL: https://github.com/Smart-Campus-Digital-Twin/Smart-Campus-Digital-Twin-v2.git
-    targetRevision: master
+    targetRevision: Deployment
     path: deployment/k8s
 
   destination:
