@@ -1,15 +1,15 @@
 # Smart Campus Digital Twin — full pipeline stack
 #
 # Services (startup order):
-#   mosquitto → kafka → influxdb → postgres
+#   mosquitto → kafka → influxdb → postgres → redis
 #   → bridge → flink-jobmanager → flink-taskmanager → flink-submit
-#   → spark-master → spark-worker → airflow → api → grafana
+#   → spark-master → spark-worker → airflow → api → grafana → frontend
 #
 # Usage:
-#   cp env/*.env.example env/*.env   # then fill in real values
-#   make up                          # starts everything
-#   make logs                        # tail all logs
-#   make down                        # stop and remove containers
+#   make env    # copy .env.example files
+#   make up     # start all services
+#   make logs   # tail logs
+#   make down   # stop containers
 
 # ---------------------------------------------------------------------------
 # Shared network — all services use the same bridge so they can reach each
