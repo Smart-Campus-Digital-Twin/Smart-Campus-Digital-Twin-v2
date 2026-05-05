@@ -81,8 +81,8 @@ def main() -> int:
     template_path = Path(_require_env("KONG_TEMPLATE_PATH"))
     out_path = Path(_require_env("KONG_OUT_PATH"))
 
-    attempts = int(os.getenv("KEYCLOAK_JWKS_ATTEMPTS", "60"))
-    sleep_s = float(os.getenv("KEYCLOAK_JWKS_SLEEP_S", "2"))
+    attempts = int(os.getenv("KEYCLOAK_JWKS_ATTEMPTS", "30"))
+    sleep_s = float(os.getenv("KEYCLOAK_JWKS_SLEEP_S", "3"))
 
     last_error: Exception | None = None
     for _ in range(attempts):

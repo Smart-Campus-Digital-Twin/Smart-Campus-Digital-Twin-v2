@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # ── Stage 0: JDK headers ─────────────────────────────────────────────────────
 # Provides include/ so pip can compile apache-flink's C extension on ARM64.
 FROM eclipse-temurin:17-jdk-jammy AS jdk-headers
@@ -8,7 +9,8 @@ FROM eclipse-temurin:17-jdk-jammy AS jdk-headers
 # JAR cache is invalidated only when URL ARGs change — never by Python deps.
 FROM alpine:3.20 AS jars
 
-RUN apk add --no-cache curl
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add --no-cache curl
 
 RUN set -eux; \
     KAFKA_URL="https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.4.0-1.20/flink-sql-connector-kafka-3.4.0-1.20.jar"; \
@@ -29,16 +31,24 @@ COPY --from=jars        /jars/                    /opt/flink/lib/
 
 COPY processing/flink/requirements.txt /tmp/flink-requirements.txt
 
-RUN apt-get update \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update \
     && apt-get install -y --no-install-recommends \
            python3.11 python3.11-dev python3-pip build-essential cmake \
     && ln -sf python3.11 /usr/bin/python3 \
     && ln -sf python3 /usr/bin/python \
-    && chmod -R a+rX /opt/flink/conf \
-    && pip3 install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip3 install --no-cache-dir -r /tmp/flink-requirements.txt \
-    && apt-get purge -y --auto-remove build-essential cmake python3.11-dev \
-    && rm -rf /var/lib/apt/lists/* /root/.cache /tmp/flink-requirements.txt
+    && chmod -R a+rX /opt/flink/conf
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip3 install --upgrade pip setuptools wheel \
+    && pip3 install -r /tmp/flink-requirements.txt
+
+RUN apt-get purge -y --auto-remove build-essential cmake python3.11-dev \
+    && rm -rf /root/.cache /tmp/flink-requirements.txt
+
+# Pre-compile bytecode → faster task startup
+RUN python3.11 -m compileall -q /usr/local/lib/python3.11 2>/dev/null || true
 
 # ── Stage 3: Flink cluster runtime (jobmanager + taskmanager) ─────────────────
 # target: cluster
@@ -59,7 +69,7 @@ ENV FLINK_LOG_DIR=/tmp/flink-logs \
 USER appuser
 
 # ── Stage 4: Job submit image ─────────────────────────────────────────────────
-FROM cluster
+FROM cluster AS submit
 
 WORKDIR /app
 COPY --chown=appuser:appgroup shared/           ./shared/
