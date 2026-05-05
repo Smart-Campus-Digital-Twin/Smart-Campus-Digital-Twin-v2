@@ -4,10 +4,11 @@ metadata:
   name: influxdb-data
   namespace: campus
 spec:
-  accessModes: [ReadWriteOnce]
+  accessModes:
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 20Gi
+      storage: 5Gi
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -31,41 +32,34 @@ spec:
           ports:
             - containerPort: 8086
           envFrom:
+            - configMapRef:
+                name: campus-common
             - secretRef:
-                name: campus-influxdb
-          env:
-            - name: DOCKER_INFLUXDB_INIT_MODE
-              value: setup
-            - name: DOCKER_INFLUXDB_INIT_ORG
-              value: smart-campus
-            - name: DOCKER_INFLUXDB_INIT_BUCKET
-              value: campus_sensors
-          volumeMounts:
-            - name: data
-              mountPath: /var/lib/influxdb2
+                name: influxdb-env
           resources:
             requests:
-              memory: 256Mi
-              cpu: 150m
-            limits:
               memory: 512Mi
-              cpu: 400m
+              cpu: 200m
+            limits:
+              memory: 1Gi
+              cpu: 1000m
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ping
               port: 8086
-            initialDelaySeconds: 20
+            initialDelaySeconds: 15
             periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8086
-            initialDelaySeconds: 40
-            periodSeconds: 15
-      volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: influxdb-data
+          volumeMounts:
+            - name: influxdb-data
+              mountPath: /var/lib/influxdb2
+  volumeClaimTemplates:
+    - metadata:
+        name: influxdb-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 5Gi
 ---
 apiVersion: v1
 kind: Service
@@ -75,7 +69,7 @@ metadata:
 spec:
   selector:
     app: influxdb
+  type: LoadBalancer
   ports:
     - port: 8086
       targetPort: 8086
-  clusterIP: None

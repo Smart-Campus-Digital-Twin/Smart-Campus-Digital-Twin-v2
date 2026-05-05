@@ -16,31 +16,21 @@ spec:
       containers:
         - name: keycloak
           image: quay.io/keycloak/keycloak:25.0
-          args: ["start-dev", "--import-realm"]
+          command: ["start-dev"]
           ports:
             - containerPort: 8080
           envFrom:
+            - configMapRef:
+                name: campus-common
             - secretRef:
-                name: campus-keycloak
+                name: keycloak-env
           env:
-            - name: KC_DB
-              value: postgres
-            - name: KC_DB_URL_HOST
-              value: postgres
-            - name: KC_DB_URL_DATABASE
-              value: keycloak
-            - name: KC_HEALTH_ENABLED
-              value: "true"
-            - name: KC_METRICS_ENABLED
-              value: "true"
-          volumeMounts:
-            - name: realm
-              mountPath: /opt/keycloak/data/import/realm-campus.json
-              subPath: realm-campus.json
+            - name: KC_DB_URL
+              value: jdbc:postgresql://postgres:5432/keycloak
           resources:
             requests:
               memory: 512Mi
-              cpu: 250m
+              cpu: 500m
             limits:
               memory: 1Gi
               cpu: 1000m
@@ -48,19 +38,9 @@ spec:
             httpGet:
               path: /health/ready
               port: 8080
-            initialDelaySeconds: 90
+            initialDelaySeconds: 60
             periodSeconds: 15
             failureThreshold: 20
-          livenessProbe:
-            httpGet:
-              path: /health/live
-              port: 8080
-            initialDelaySeconds: 120
-            periodSeconds: 30
-      volumes:
-        - name: realm
-          configMap:
-            name: keycloak-realm
 ---
 apiVersion: v1
 kind: Service
@@ -70,6 +50,7 @@ metadata:
 spec:
   selector:
     app: keycloak
+  type: LoadBalancer
   ports:
-    - port: 8080
+    - port: 8083
       targetPort: 8080
