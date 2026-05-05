@@ -69,29 +69,24 @@ jobs:
           CHANGES: ${{ steps.filter.outputs.changes }}
           EVENT:   ${{ github.event_name }}
         run: |
-          ALL='[
-            {"service":"campus-api",          "dockerfile":"api/Dockerfile",              "context":"."},
-            {"service":"campus-bridge",        "dockerfile":"bridge/Dockerfile",           "context":"."},
-            {"service":"campus-simulator",     "dockerfile":"simulator/Dockerfile",        "context":"."},
-            {"service":"campus-frontend",      "dockerfile":"infra/frontend/Dockerfile",   "context":"."},
-            {"service":"campus-spark",         "dockerfile":"infra/spark/Dockerfile",      "context":".", "target":"cluster"},
-            {"service":"campus-flink",         "dockerfile":"processing/flink/Dockerfile", "context":".", "target":"cluster"},
-            {"service":"campus-flink-submit",  "dockerfile":"processing/flink/Dockerfile", "context":"."},
-            {"service":"campus-ml-training",   "dockerfile":"ml/Dockerfile",               "context":".", "target":"training"},
-            {"service":"campus-ml-inference",  "dockerfile":"ml/Dockerfile",               "context":".", "target":"inference"},
-            {"service":"campus-airflow",       "dockerfile":"airflow/Dockerfile",          "context":"."}
-          ]'
+          ALL='[{"service":"campus-api","dockerfile":"api/Dockerfile","context":"."},{"service":"campus-bridge","dockerfile":"bridge/Dockerfile","context":"."},{"service":"campus-simulator","dockerfile":"simulator/Dockerfile","context":"."},{"service":"campus-frontend","dockerfile":"infra/frontend/Dockerfile","context":"."},{"service":"campus-spark","dockerfile":"infra/spark/Dockerfile","context":".","target":"cluster"},{"service":"campus-flink","dockerfile":"processing/flink/Dockerfile","context":".","target":"cluster"},{"service":"campus-flink-submit","dockerfile":"processing/flink/Dockerfile","context":"."},{"service":"campus-ml-training","dockerfile":"ml/Dockerfile","context":".","target":"training"},{"service":"campus-ml-inference","dockerfile":"ml/Dockerfile","context":".","target":"inference"},{"service":"campus-airflow","dockerfile":"airflow/Dockerfile","context":"."}]'
 
           if [ "$EVENT" = "workflow_dispatch" ]; then
-            # Manual run → rebuild everything
-            FILTERED=$ALL
+            FILTERED=$(echo "$ALL" | jq -c '.')
           else
-            FILTERED=$(echo "$ALL" | jq --argjson c "$CHANGES" \
+            FILTERED=$(echo "$ALL" | jq -c --argjson c "$CHANGES" \
               '[.[] | select(.service as $s | $c | index($s) != null)]')
           fi
 
-          echo "matrix={\"include\":$FILTERED}" >> "$GITHUB_OUTPUT"
-          echo "any-changed=$(echo "$FILTERED" | jq 'length > 0')" >> "$GITHUB_OUTPUT"
+          ANY=$(echo "$FILTERED" | jq 'length > 0')
+
+          # Heredoc format required for multiline/complex values in GITHUB_OUTPUT
+          {
+            echo "matrix<<EOF"
+            echo "{\"include\":$FILTERED}"
+            echo "EOF"
+            echo "any-changed=$ANY"
+          } >> "$GITHUB_OUTPUT"
 
   # ── Build + push only the changed images ───────────────────────────────────
   build-push:
