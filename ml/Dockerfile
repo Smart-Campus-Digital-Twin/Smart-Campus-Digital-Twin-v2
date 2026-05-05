@@ -1,12 +1,13 @@
+# syntax=docker/dockerfile:1.7
 # ── Stage 1: shared system base ───────────────────────────────────────────────
-FROM python:3.12-slim AS base
+FROM python:3.12-slim-bookworm AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 && \
-    rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends libpq5
 
 RUN addgroup --system --gid 1001 appgroup && \
     adduser  --system --uid 1001 --ingroup appgroup appuser
@@ -14,24 +15,27 @@ RUN addgroup --system --gid 1001 appgroup && \
 WORKDIR /opt/campus
 
 # ── Stage 2: Python dependency builder ────────────────────────────────────────
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim-bookworm AS builder
 
-ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    build-essential libpq-dev
 
-RUN python -m venv /venv && \
-    /venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN python -m venv /venv
+ENV PATH="/venv/bin:$PATH"
 
 COPY ml/requirements.txt /tmp/ml-requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip setuptools wheel \
+    && pip install -r /tmp/ml-requirements.txt \
+    && pip install "setuptools>=65.0,<72"
 
-# kedro_project/requirements.txt is for local notebook dev (jupyterlab, ipython).
-# Production only needs the packages in ml/requirements.txt.
-RUN /venv/bin/pip install --no-cache-dir -r /tmp/ml-requirements.txt
-# Re-pin setuptools after all installs so transitive upgrades cannot override it.
-RUN /venv/bin/pip install --no-cache-dir "setuptools>=65.0,<72"
+# Pre-compile bytecode — exclude cookiecutter templates (invalid Python syntax)
+RUN python -m compileall -q -x 'cookiecutter' /venv/lib || true
 
 # ── Stage 3: training runtime ─────────────────────────────────────────────────
 # Used by campus-ml-training. Sleeps until Airflow exec-s a kedro run into it,
@@ -49,7 +53,6 @@ ENV PATH="/venv/bin:$PATH" \
     PYTHONWARNINGS=ignore
 
 USER appuser
-# Stays alive so Airflow can docker exec into it for scheduled retraining.
 CMD ["sleep", "infinity"]
 
 # ── Stage 4: inference runtime ────────────────────────────────────────────────

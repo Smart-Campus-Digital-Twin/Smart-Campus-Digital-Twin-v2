@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simulator
+  namespace: campus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: simulator
+  template:
+    metadata:
+      labels:
+        app: simulator
+    spec:
+      containers:
+        - name: simulator
+          image: campus-simulator:latest
+          envFrom:
+            - configMapRef:
+                name: campus-common
+            - secretRef:
+                name: campus-mqtt
+          env:
+            - name: ANOMALY_INJECTION_ENABLED
+              value: "true"
+            - name: ANOMALY_INJECTION_PROB
+              value: "0.01"
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+              cpu: 500m

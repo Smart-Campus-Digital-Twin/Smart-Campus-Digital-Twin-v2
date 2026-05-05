@@ -1,15 +1,23 @@
-FROM python:3.12-slim AS builder
+# syntax=docker/dockerfile:1.7
+# ── Stage 1: dependency builder ──────────────────────────────────────────────
+FROM python:3.12-slim-bookworm AS builder
 
-ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN python -m venv /venv \
-    && /venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 
 COPY simulator/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip setuptools wheel \
+    && pip install -r /tmp/requirements.txt
 
-FROM python:3.12-slim
+# Pre-compile bytecode → faster container startup
+RUN python -m compileall -q /venv/lib
+
+# ── Stage 2: runtime image ────────────────────────────────────────────────────
+FROM python:3.12-slim-bookworm AS runtime
 
 RUN addgroup --system --gid 1001 appgroup \
     && adduser --system --uid 1001 --ingroup appgroup appuser

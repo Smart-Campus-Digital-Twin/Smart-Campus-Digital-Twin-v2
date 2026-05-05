@@ -60,7 +60,7 @@ services:
       - ./infra/mosquitto/init-passwd.sh:/init-passwd.sh:ro
       - mosquitto-data:/mosquitto/data
     env_file: [env/mosquitto.env]
-    entrypoint: ["/bin/sh", "/init-passwd.sh"]
+    entrypoint: ["/bin/sh", "-c", "tr -d '\\r' < /init-passwd.sh > /tmp/init.sh && sh /tmp/init.sh"]
     healthcheck:
       test: ["CMD-SHELL", "mosquitto_pub -h localhost -t health -m ping -u $$MQTT_USERNAME -P $$MQTT_PASSWORD"]
       interval: 15s
@@ -242,6 +242,12 @@ services:
     volumes:
       - ./infra/keycloak/realm-campus.json:/opt/keycloak/data/import/realm-campus.json:ro
     command: ["start-dev", "--import-realm"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
 
 
   # ==========================================================================
@@ -613,7 +619,7 @@ services:
     restart: unless-stopped
     networks: [campus]
     ports:
-      - "3002:3000"
+      - "127.0.0.1:3002:3000"
     depends_on:
       influxdb:
         condition: service_healthy
@@ -810,7 +816,7 @@ services:
     networks: [campus]
     depends_on:
       keycloak:
-        condition: service_started
+        condition: service_healthy
     environment:
       KEYCLOAK_INTERNAL_URL: http://keycloak:8080
       KEYCLOAK_REALM: campus
