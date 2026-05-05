@@ -159,21 +159,22 @@ The simulator generates realistic sensor readings every 5 seconds based on acade
 - **Web UI Port:** 8080 (Spark master UI)
 - **Role:** Batch aggregations and feature engineering
 
-#### DAG 1: Hourly Rollup (`hourly_rollup_dag.py`)
-- **Schedule:** `0 * * * *` (top of every hour)
-- **Spark Job:** `hourly_rollup.py`
+#### Hourly Rollup (InfluxDB Flux Task)
+- **Schedule:** Every hour at :05 (native InfluxDB task)
+- **Flux Task:** `downsample_1m_to_1h.flux`
 - **Input:** InfluxDB `campus_1m` for previous hour
 - **Output:** InfluxDB `campus_1h` bucket
 - **Aggregation:** 60 one-minute points → 1 hourly point (min, max, avg, sum)
+- **Note:** Replaced Spark job (kept as backup: `hourly_rollup.py.DISABLED`)
 
-#### DAG 2: Daily Energy Report (`daily_reports_dag.py`)
+#### DAG 1: Daily Energy Report (`daily_reports_dag.py`)
 - **Schedule:** `0 0 30 * * *` (00:30 daily)
 - **Spark Job:** `daily_energy_report.py`
 - **Input:** InfluxDB `campus_1h` for previous 24 hours
 - **Output:** PostgreSQL `energy_daily` table
 - **Metrics:** total_kwh, peak_w, avg_w per building
 
-#### DAG 3: Weekly ML Features (`weekly_features_dag.py`)
+#### DAG 2: Weekly ML Features (`weekly_features_dag.py`)
 - **Schedule:** `0 0 2 * * 1` (Monday 02:00)
 - **Spark Job:** `weekly_ml_features.py`
 - **Input:** InfluxDB `campus_1h` (7 days) + PostgreSQL `rooms`
@@ -330,11 +331,11 @@ All services communicate using container names (DNS resolution):
 │   REAL-TIME PROCESSING    │                    │   BATCH PROCESSING         │
 ├───────────────────────────┤                    ├───────────────────────────┤
 │ Flink Cluster             │                    │ Airflow Scheduler          │
-│ ├─ KafkaToInfluxJob       │                    │ ├─ Hourly Rollup DAG       │
-│ │  → InfluxDB campus_raw  │                    │ │  → Spark hourly_rollup   │
-│ │                         │                    │ │  → InfluxDB campus_1h   │
-│ ├─ WindowAggJob (1-min)   │                    │ ├─ Daily Energy DAG       │
-│ │  → InfluxDB campus_1m   │                    │ │  → Spark daily_report    │
+│ ├─ KafkaToInfluxJob       │                    │ ├─ Daily Energy DAG        │
+│ │  → InfluxDB campus_raw  │                    │ │  → Spark daily_report    │
+│ │                         │                    │ │  → PostgreSQL            │
+│ ├─ WindowAggJob (1-min)   │                    │ ├─ Weekly Features DAG    │
+│ │  → InfluxDB campus_1m   │                    │ │  → Spark weekly_features │
 │ │                         │                    │ │  → PostgreSQL energy_daily│
 │ └─ AnomalyJob (CEP)       │                    │ └─ Weekly Features DAG     │
 │    → Kafka alerts.anomalies│                    │    → Spark weekly_features │
@@ -539,14 +540,14 @@ Smart-Campus-Digital-Twin-v2/
 │   │   └── config.py
 │   └── spark/                    # Batch processing
 │       ├── jobs/
-│       │   ├── hourly_rollup.py
+│       │   ├── hourly_rollup.py.DISABLED  # Replaced by Flux task
 │       │   ├── daily_energy_report.py
 │       │   └── weekly_ml_features.py
 │       ├── Dockerfile
 │       └── config.py
 ├── airflow/                      # Batch orchestration
 │   ├── dags/
-│   │   ├── hourly_rollup_dag.py
+│   │   ├── hourly_rollup_dag.py.DISABLED  # Replaced by Flux task
 │   │   ├── daily_reports_dag.py
 │   │   ├── weekly_features_dag.py
 │   │   └── callbacks.py
@@ -635,7 +636,8 @@ make down
 ## Maintenance
 
 ### Manual Hourly Rollup
-If Airflow is down, use `manual_hourly_rollup.sh` to trigger hourly rollup manually.
+**DEPRECATED:** Hourly rollup now runs as native InfluxDB Flux task (`downsample_1m_to_1h.flux`).
+No manual intervention needed. Old Spark-based script kept for reference.
 
 ### Resetting Data
 ```bash

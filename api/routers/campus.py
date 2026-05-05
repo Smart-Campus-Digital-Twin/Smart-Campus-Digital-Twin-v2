@@ -16,8 +16,8 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from api.clients import InfluxAPIClient
-from api.dependencies import get_influx
+from api.clients import InfluxAPIClient, PostgresClient, RedisCache
+from api.dependencies import get_influx, get_postgres, get_redis
 
 router = APIRouter(prefix="/campus", tags=["Campus (public)"])
 
@@ -62,7 +62,7 @@ class ZoneData(BaseModel):
     id: str
     name: str
     energyKw: float
-    occupancy: int       # total headcount across all rooms
+    occupancy: int       # occupancy percentage (0-100%)
     temperatureC: float  # mean across rooms
     anomalyCount: int
     status: str          # "normal" | "busy" | "critical"
@@ -134,12 +134,20 @@ def _derive_status(total_occ: float, avg_temp: float, anomaly_count: int) -> str
 )
 async def campus_zones(
     influx: InfluxAPIClient = Depends(get_influx),
+    postgres: PostgresClient = Depends(get_postgres),
+    redis: RedisCache = Depends(get_redis),
 ) -> list[ZoneData]:
     """
     Raw per-room Flux query → aggregate per building → map to Zone[].
-    Aggregation: sum(occupancy), sum(energy), mean(temperature).
+    Aggregation: avg occupancy %, sum(energy), mean(temperature).
     Falls back to safe defaults for any building with no recent data.
+    Cached in Redis for 5 seconds to reduce load on InfluxDB/PostgreSQL.
     """
+    # Try cache first
+    cache_key = "campus:zones"
+    cached = await redis.get(cache_key)
+    if cached is not None:
+        return [ZoneData(**z) for z in cached]
     try:
         df = await influx.all_buildings_latest(range_minutes=5)
     except Exception:
@@ -178,6 +186,17 @@ async def campus_zones(
             if bld and cnt is not None:
                 anomaly_counts[bld] = int(cnt)
 
+    # ── get building capacities from PostgreSQL ────────────────────────────
+    capacity_map: dict[str, int] = {}
+    try:
+        rows = await postgres.fetch(
+            "SELECT building_id, SUM(capacity) as total_capacity FROM rooms GROUP BY building_id"
+        )
+        for row in rows:
+            capacity_map[row["building_id"]] = int(row["total_capacity"])
+    except Exception:
+        pass  # If query fails, fall back to defaults
+
     # ── build zone list ─────────────────────────────────────────────────────
     zones: list[ZoneData] = []
     for zone_id, zone_name in _ZONE_NAMES.items():
@@ -188,8 +207,12 @@ async def campus_zones(
         nrgs  = nrg_lists.get(bld_id,  [])
 
         avg_temp  = round(sum(temps) / len(temps), 1) if temps else _DEFAULT["temperature"]
-        total_occ = int(round(sum(occs)))              if occs  else int(_DEFAULT["occupancy"])
-        total_nrg = sum(nrgs)                          if nrgs  else _DEFAULT["energy"]
+        total_occ_count = sum(occs) if occs else 0
+        total_capacity = capacity_map.get(bld_id, 1)  # avoid division by zero
+        # Calculate occupancy as percentage
+        occupancy_pct = int(round((total_occ_count / total_capacity) * 100)) if total_capacity > 0 else 0
+        
+        total_nrg = sum(nrgs) if nrgs else _DEFAULT["energy"]
         # convert W → kW if simulator emits watts (>500 is clearly watts)
         energy_kw = round(total_nrg / 1000.0 if total_nrg > 500 else total_nrg, 1)
         anom_cnt  = anomaly_counts.get(bld_id, 0)
@@ -198,12 +221,15 @@ async def campus_zones(
             id=zone_id,
             name=zone_name,
             temperatureC=avg_temp,
-            occupancy=total_occ,
+            occupancy=occupancy_pct,
             energyKw=energy_kw,
             anomalyCount=anom_cnt,
-            status=_derive_status(total_occ, avg_temp, anom_cnt),
+            status=_derive_status(occupancy_pct, avg_temp, anom_cnt),
         ))
 
+    # Cache for 5 seconds
+    await redis.set(cache_key, [z.model_dump() for z in zones], ttl_seconds=5)
+    
     return zones
 
 

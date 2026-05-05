@@ -24,8 +24,8 @@ echo "==> InfluxDB is ready."
 # ------------------------------------------------------------------
 # campus_raw  : 7 days  — raw readings, written by Flink at ~1-sec latency
 # campus_1m   : 30 days — 1-min aggregations, written by Flink WindowAggJob
-# campus_1h   : 1 year  — 1-hour roll-ups, written by Spark HourlyRollupJob
-# campus_1d   : 5 years — daily roll-ups, written by Spark DailyReportJob or Flux task
+# campus_1h   : 1 year  — 1-hour roll-ups, written by Flux task (downsample_1m_to_1h)
+# campus_1d   : 5 years — daily roll-ups, written by Flux task (downsample_1h_to_1d)
 # ------------------------------------------------------------------
 
 for BUCKET in "campus_raw:168h" "campus_1m:720h" "campus_1h:8760h" "campus_1d:43800h" "campus_predictions:8760h"; do
@@ -50,23 +50,21 @@ for BUCKET in "campus_raw:168h" "campus_1m:720h" "campus_1h:8760h" "campus_1d:43
 done
 
 # ------------------------------------------------------------------
-# Flux tasks — register continuous downsampling task
+# Flux tasks — register continuous downsampling tasks
 # ------------------------------------------------------------------
 
-TASK_FILE="/influxdb-setup/tasks/downsample_1h_to_1d.flux"
-TASK_NAME="downsample_1h_to_1d"
-
-if [ -f "${TASK_FILE}" ]; then
-    if influx task list --host "${INFLUX_HOST}" 2>/dev/null | grep -q "${TASK_NAME}"; then
-        echo "  Task '${TASK_NAME}' already exists — skipping."
-    else
-        influx task create \
-            --file "${TASK_FILE}" \
-            --host "${INFLUX_HOST}"
-        echo "  Created Flux task '${TASK_NAME}'."
+for TASK_FILE in /influxdb-setup/tasks/*.flux; do
+    if [ -f "${TASK_FILE}" ]; then
+        TASK_NAME=$(basename "${TASK_FILE}" .flux)
+        if influx task list --host "${INFLUX_HOST}" 2>/dev/null | grep -q "${TASK_NAME}"; then
+            echo "  Task '${TASK_NAME}' already exists — skipping."
+        else
+            influx task create \
+                --file "${TASK_FILE}" \
+                --host "${INFLUX_HOST}"
+            echo "  Created Flux task '${TASK_NAME}'."
+        fi
     fi
-else
-    echo "  WARNING: Task file '${TASK_FILE}' not found — skipping task creation."
-fi
+done
 
 echo "==> InfluxDB setup complete."

@@ -25,7 +25,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from shared.logging_config import get_logger
-from api.clients import InfluxAPIClient, PostgresClient
+from api.clients import InfluxAPIClient, PostgresClient, RedisCache
 from api.config import config as legacy_config
 from api.core.config import settings
 from api.core.middleware import logging_middleware, setup_rate_limiter
@@ -52,8 +52,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # ── Legacy clients — always started; campus/metrics/reports routers depend on these ─
     legacy_influx = InfluxAPIClient()
     legacy_postgres = PostgresClient()
+    redis_cache = RedisCache()
     await legacy_postgres.connect()
-    set_clients(legacy_influx, legacy_postgres)
+    await redis_cache.connect()
+    set_clients(legacy_influx, legacy_postgres, redis_cache)
 
     # ── New SQLAlchemy engine (optional — protected endpoints only) ───────────
     influx_dashboard: InfluxDashboardClient | None = None
@@ -74,6 +76,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if influx_dashboard:
         influx_dashboard.close()
     await legacy_postgres.close()
+    await redis_cache.close()
     legacy_influx.close()
     logger.info("API shutdown complete.")
 

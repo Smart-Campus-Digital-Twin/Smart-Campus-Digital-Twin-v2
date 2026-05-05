@@ -20,6 +20,7 @@ limits==3.14.0
 
 # Caching (in-process TTL cache for /rooms/latest-all)
 cachetools==5.5.0
+redis==5.0.1
 
 # Dev / testing
 pytest==8.3.4

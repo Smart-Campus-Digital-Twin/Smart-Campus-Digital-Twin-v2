@@ -28,6 +28,7 @@ volumes:
   influxdb-data:
   influxdb-config:
   postgres-data:
+  redis-data:
   grafana-data:
   airflow-logs:
   spark-work:
@@ -202,6 +203,31 @@ services:
       retries: 10
 
   # ==========================================================================
+  # Layer 4b — Redis cache
+  # ==========================================================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: campus-redis
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ==========================================================================
   # Layer 5a — Simulator (sensor data generator)
   # ==========================================================================
 
@@ -308,13 +334,11 @@ services:
       - env/kafka.env
       - env/influxdb.env
       - env/postgres.env
-    environment:
-      PREDICTION_SERVICE_URL: http://ml-prediction:8001
     command: taskmanager
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 4G
           cpus: "2.0"
 
   # Submits all three PyFlink jobs once the cluster + dependencies are ready.
@@ -341,7 +365,6 @@ services:
       - env/postgres.env
     environment:
       FLINK_MASTER: flink-jobmanager:8081
-      PREDICTION_SERVICE_URL: http://ml-prediction:8001
     restart: "no"
 
   # ==========================================================================
@@ -549,10 +572,14 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - env/influxdb.env
       - env/postgres.env
       - env/api.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
     deploy:
       resources:
         limits:
@@ -728,29 +755,30 @@ services:
       start_period: 60s
 
   # Real-time prediction service - lightweight API for Flink jobs
-  ml-prediction:
-    build:
-      context: ml/prediction_service
-      dockerfile: Dockerfile
-    container_name: campus-ml-prediction
-    restart: unless-stopped
-    networks: [campus]
-    ports:
-      - "8001:8001"
-    depends_on:
-      mlflow:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
-    environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
-      - INFLUXDB_URL=http://influxdb:8086
-      - INFLUXDB_ORG=smart-campus
-      - INFLUXDB_BUCKET=campus_predictions
-    env_file:
-      - env/influxdb.env
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: "2.0"
+  # DISABLED: Causing issues, commented out for now
+  # ml-prediction:
+  #   build:
+  #     context: ml/prediction_service
+  #     dockerfile: Dockerfile
+  #   container_name: campus-ml-prediction
+  #   restart: unless-stopped
+  #   networks: [campus]
+  #   ports:
+  #     - "8001:8001"
+  #   depends_on:
+  #     mlflow:
+  #       condition: service_healthy
+  #     influxdb:
+  #       condition: service_healthy
+  #   environment:
+  #     - MLFLOW_TRACKING_URI=http://mlflow:5000
+  #     - INFLUXDB_URL=http://influxdb:8086
+  #     - INFLUXDB_ORG=smart-campus
+  #     - INFLUXDB_BUCKET=campus_predictions
+  #   env_file:
+  #     - env/influxdb.env
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 2G
+  #         cpus: "2.0"

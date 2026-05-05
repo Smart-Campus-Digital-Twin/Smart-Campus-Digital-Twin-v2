@@ -14,22 +14,8 @@
   "links": [],
   "panels": [
 
-    { "id": 1, "title": "Live Sensor Count", "type": "stat",
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
-      "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "orientation": "auto", "colorMode": "background",
-        "graphMode": "none", "textMode": "auto"
-      },
-      "targets": [{
-        "refId": "A",
-        "query": "from(bucket: \"campus_raw\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"sensors\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> group(columns: [\"room_id\", \"sensor_type\"])\n  |> last()\n  |> group()\n  |> count()"
-      }]
-    },
-
     { "id": 2, "title": "Campus Total Power (W)", "type": "stat",
-      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
       "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
@@ -38,12 +24,12 @@
       "fieldConfig": { "defaults": { "unit": "watt", "decimals": 0 } },
       "targets": [{
         "refId": "A",
-        "query": "from(bucket: \"campus_raw\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"sensors\")\n  |> filter(fn: (r) => r.sensor_type == \"energy\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> group(columns: [\"room_id\"])\n  |> last()\n  |> group()\n  |> sum()"
+        "query": "from(bucket: \"campus_raw\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"sensor_energy\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> group(columns: [\"room_id\"])\n  |> last()\n  |> group()\n  |> sum()"
       }]
     },
 
     { "id": 3, "title": "Campus Avg Occupancy (persons)", "type": "gauge",
-      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
       "datasource": { "type": "influxdb", "uid": "P951FEA4DE68E13C5" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
@@ -65,7 +51,7 @@
       },
       "targets": [{
         "refId": "A",
-        "query": "from(bucket: \"campus_1m\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m\")\n  |> filter(fn: (r) => r.sensor_type == \"occupancy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> last()\n  |> group()\n  |> mean()"
+        "query": "from(bucket: \"campus_1m\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m_occupancy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> last()\n  |> group()\n  |> mean()"
       }]
     },
 
@@ -95,10 +81,10 @@
       }]
     },
 
-    { "id": 10, "title": "Buildings Reporting Today", "type": "stat",
+    { "id": 10, "title": "Buildings Reporting Yesterday", "type": "stat",
       "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
       "datasource": { "type": "postgres", "uid": "PCC52D03280B7034C" },
-      "description": "Count of buildings that have submitted energy data today. Expect 25.",
+      "description": "Count of buildings that submitted energy data yesterday. Expect 25.",
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "background", "graphMode": "none"
@@ -117,7 +103,7 @@
       },
       "targets": [{
         "refId": "A",
-        "rawSql": "SELECT COUNT(DISTINCT building_id) AS \"Buildings Reporting\" FROM energy_daily WHERE date = CURRENT_DATE",
+        "rawSql": "SELECT COUNT(DISTINCT building_id) AS \"Buildings Reporting\" FROM energy_daily WHERE date = CURRENT_DATE - INTERVAL '1 day'",
         "format": "table"
       }]
     },
@@ -133,7 +119,7 @@
       },
       "targets": [{
         "refId": "A",
-        "query": "from(bucket: \"campus_1m\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m\")\n  |> filter(fn: (r) => r.sensor_type == \"temperature\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"room_id\"])"
+        "query": "from(bucket: \"campus_1m\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m_temperature\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"room_id\"])"
       }]
     },
 
@@ -148,7 +134,7 @@
       },
       "targets": [{
         "refId": "A",
-        "query": "from(bucket: \"campus_1m\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m\")\n  |> filter(fn: (r) => r.sensor_type == \"energy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: sum, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"building_id\"])"
+        "query": "from(bucket: \"campus_1m\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m_energy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: sum, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"building_id\"])"
       }]
     },
 
@@ -193,14 +179,14 @@
       },
       "targets": [{
         "refId": "A",
-        "query": "from(bucket: \"campus_1h\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1h\")\n  |> filter(fn: (r) => r.sensor_type == \"energy\")\n  |> filter(fn: (r) => r._field == \"sum_avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"building_id\"])"
+        "query": "from(bucket: \"campus_1m\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m_energy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"building_id\"])"
       }]
     },
 
-    { "id": 9, "title": "Daily Energy — Actual (today, per building)", "type": "barchart",
+    { "id": 9, "title": "Daily Energy — Actual (yesterday, per building)", "type": "barchart",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
       "datasource": { "type": "postgres", "uid": "PCC52D03280B7034C" },
-      "description": "Total kWh per building for today from the Spark daily rollup.",
+      "description": "Total kWh per building for yesterday from the Spark daily rollup (runs at 00:30).",
       "options": {
         "orientation": "horizontal",
         "groupWidth": 0.7,
@@ -212,7 +198,7 @@
       },
       "targets": [{
         "refId": "A",
-        "rawSql": "SELECT building_id, total_kwh FROM energy_daily WHERE date = CURRENT_DATE ORDER BY total_kwh DESC",
+        "rawSql": "SELECT building_id, total_kwh FROM energy_daily WHERE date = CURRENT_DATE - INTERVAL '1 day' ORDER BY total_kwh DESC",
         "format": "table"
       }]
     },
@@ -228,7 +214,7 @@
       },
       "targets": [{
         "refId": "A",
-        "query": "from(bucket: \"campus_1h\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1h\")\n  |> filter(fn: (r) => r.sensor_type == \"temperature\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"building_id\"])"
+        "query": "from(bucket: \"campus_1m\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m_temperature\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"building_id\"])"
       }]
     },
 
@@ -243,7 +229,7 @@
       },
       "targets": [{
         "refId": "A",
-        "query": "from(bucket: \"campus_1h\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1h\")\n  |> filter(fn: (r) => r.sensor_type == \"occupancy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"building_id\"])"
+        "query": "from(bucket: \"campus_1m\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"sensor_1m_occupancy\")\n  |> filter(fn: (r) => r._field == \"avg\")\n  |> group(columns: [\"building_id\"])\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"building_id\"])"
       }]
     },
 
