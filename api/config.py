@@ -46,3 +46,4 @@ class APIConfig(BaseSettings):
 
 
 config = APIConfig()
+settings = config  # alias used by some routers

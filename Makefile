@@ -1,7 +1,7 @@
 # Smart Campus Digital Twin — development helpers
 # Requires: docker, docker-compose, python >= 3.12, kcat (optional)
 
-.PHONY: help env up down dev logs ps build test lint clean
+.PHONY: help env up down dev logs ps build test lint clean ml-bootstrap ml-train ml-status frontend-update frontend-build frontend-up
 
 COMPOSE      = docker compose -f docker-compose.yml
 COMPOSE_DEV  = docker compose -f docker-compose.dev.yml
@@ -36,6 +36,66 @@ logs: ## Tail logs for all services
 
 ps: ## Show running containers and health
 	$(COMPOSE) ps
+
+##@ Machine Learning
+
+ml-bootstrap: ## Generate base datasets and train+promote all 3 models (first run)
+	@echo "Starting MLflow if not running..."
+	$(COMPOSE) up -d mlflow
+	@sleep 3
+	@echo "Running bootstrap training inside ml-training container..."
+	$(COMPOSE) run --rm ml-training \
+		python /opt/campus/ml/bootstrap_training.py
+	@echo ""
+	@echo "  ✓ Base models trained and promoted to Production."
+	@echo "  MLflow UI → http://localhost:5000"
+
+ml-train: ## Re-run all Kedro pipelines (re-training, no dataset regeneration)
+	$(COMPOSE) run --rm ml-training \
+		python /opt/campus/ml/bootstrap_training.py --skip-generate
+
+ml-status: ## Show current Production model versions in MLflow
+	$(COMPOSE) run --rm ml-training \
+		python -c "\
+import mlflow, os; \
+mlflow.set_tracking_uri(os.environ.get('MLFLOW_TRACKING_URI','http://mlflow:5000')); \
+client = mlflow.tracking.MlflowClient(); \
+[print(f'  {m}: v{v.version}  run={v.run_id[:8]}') \
+ for m in ['campus_canteen_congestion','campus_library_congestion','campus_energy_forecast'] \
+ for v in (client.get_latest_versions(m, stages=['Production']) or [{'version':'NONE','run_id':''}])]\
+"
+
+ml-deploy: ## Deploy updated ML pipeline with prediction service
+	@./scripts/deploy_ml_pipeline.sh
+
+ml-train-all: ## Train all ML models (canteen, library, energy)
+	@./scripts/train_ml_models.sh
+
+ml-verify: ## Verify ML pipeline is working correctly
+	@./scripts/verify_ml_pipeline.sh
+
+ml-prediction-logs: ## Tail logs from ML prediction service
+	docker logs -f campus-ml-prediction
+
+ml-prediction-restart: ## Restart ML prediction service (reload models)
+	$(COMPOSE) restart ml-prediction
+	@echo "Waiting for service to be healthy..."
+	@sleep 5
+	@curl -s http://localhost:8001/health | python3 -m json.tool
+
+##@ Frontend (Three.js / Next.js — git submodule: frontend/)
+
+frontend-update: ## Pull latest commits from the frontend submodule
+	git submodule update --remote --merge frontend
+	@echo "  Submodule updated. Run 'make frontend-build' to rebuild the image."
+
+frontend-build: ## Rebuild only the frontend Docker image
+	$(COMPOSE) build frontend
+
+frontend-up: ## Start only the frontend container (api must already be running)
+	$(COMPOSE) up -d frontend
+	@echo ""
+	@echo "  Three.js dashboard → http://localhost:3001"
 
 ##@ Dev (minimal — broker + databases only, run services on host)
 

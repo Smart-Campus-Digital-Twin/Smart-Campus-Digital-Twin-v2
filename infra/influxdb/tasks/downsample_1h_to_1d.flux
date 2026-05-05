@@ -15,7 +15,7 @@ option task = {
 
 from(bucket: "campus_1h")
     |> range(start: -1d)
-    |> filter(fn: (r) => r._measurement == "sensor_1h")
+    |> filter(fn: (r) => r._measurement =~ /^sensor_1h_/)
     |> filter(fn: (r) =>
         r._field == "avg" or
         r._field == "min" or

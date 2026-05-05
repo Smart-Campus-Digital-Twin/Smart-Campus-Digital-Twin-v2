@@ -67,23 +67,35 @@ class AggInfluxSink(MapFunction):
          10: quality_avg   (float)
         """
         try:
-            ts_ns   = int(row[0].timestamp() * 1_000_000_000)
-            tags    = (
+            ts_ns       = int(row[0].timestamp() * 1_000_000_000)
+            sensor_type = str(row[4])
+            measurement = f"sensor_1m_{sensor_type}"
+            tags = (
                 f"building_id={row[1]},"
                 f"floor={row[2]},"
                 f"room_id={row[3]},"
-                f"sensor_type={row[4]}"
+                f"sensor_type={sensor_type}"
             )
-            stddev  = float(row[8]) if row[8] is not None else 0.0
-            fields  = (
-                f"min={float(row[5])},"
-                f"max={float(row[6])},"
-                f"avg={float(row[7])},"
-                f"stddev={stddev},"
-                f"count={int(row[9])}i,"
-                f"quality_avg={float(row[10])}"
-            )
-            self._buffer.append(f"sensor_1m,{tags} {fields} {ts_ns}")
+            if sensor_type == "occupancy":
+                fields = (
+                    f"min={int(round(float(row[5])))}i,"
+                    f"max={int(round(float(row[6])))}i,"
+                    f"avg={int(round(float(row[7])))}i,"
+                    f"stddev=0i,"
+                    f"count={int(row[9])}i,"
+                    f"quality_avg={float(row[10])}"
+                )
+            else:
+                stddev = float(row[8]) if row[8] is not None else 0.0
+                fields = (
+                    f"min={float(row[5])},"
+                    f"max={float(row[6])},"
+                    f"avg={float(row[7])},"
+                    f"stddev={stddev},"
+                    f"count={int(row[9])}i,"
+                    f"quality_avg={float(row[10])}"
+                )
+            self._buffer.append(f"{measurement},{tags} {fields} {ts_ns}")
         except Exception as exc:
             logger.warning("Skipping malformed aggregation row", extra={"error": str(exc)})
             return "error"

@@ -25,6 +25,11 @@ docker-compose.dev.yml
 pyproject.toml
 Makefile
 
+# Frontend submodule — exclude build artifacts (rebuilt inside image)
+frontend/frontend/node_modules/
+frontend/frontend/.next/
+frontend/frontend/.env*
+
 # Secrets — must never be baked into images
 env/*.env
 .env
