@@ -34,8 +34,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     && pip install -r /tmp/ml-requirements.txt \
     && pip install "setuptools>=65.0,<72"
 
-# Pre-compile bytecode → faster container startup
-RUN python -m compileall -q /venv/lib
+# Pre-compile bytecode — exclude cookiecutter templates (invalid Python syntax)
+RUN python -m compileall -q -x 'cookiecutter' /venv/lib || true
 
 # ── Stage 3: training runtime ─────────────────────────────────────────────────
 # Used by campus-ml-training. Sleeps until Airflow exec-s a kedro run into it,

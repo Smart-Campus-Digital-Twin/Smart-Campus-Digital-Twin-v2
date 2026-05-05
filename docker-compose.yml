@@ -60,7 +60,7 @@ services:
       - ./infra/mosquitto/init-passwd.sh:/init-passwd.sh:ro
       - mosquitto-data:/mosquitto/data
     env_file: [env/mosquitto.env]
-    entrypoint: ["/bin/sh", "/init-passwd.sh"]
+    entrypoint: ["/bin/sh", "-c", "tr -d '\\r' < /init-passwd.sh > /tmp/init.sh && sh /tmp/init.sh"]
     healthcheck:
       test: ["CMD-SHELL", "mosquitto_pub -h localhost -t health -m ping -u $$MQTT_USERNAME -P $$MQTT_PASSWORD"]
       interval: 15s

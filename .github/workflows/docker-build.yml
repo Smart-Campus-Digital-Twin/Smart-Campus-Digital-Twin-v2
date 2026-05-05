@@ -12,7 +12,91 @@ env:
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
 
 jobs:
+  # ── Detect which services have changed files ────────────────────────────────
+  changes:
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      any-changed: ${{ steps.set-matrix.outputs.any-changed }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            campus-api:
+              - 'api/**'
+              - 'shared/**'
+            campus-bridge:
+              - 'bridge/**'
+              - 'shared/**'
+            campus-simulator:
+              - 'simulator/**'
+              - 'shared/**'
+            campus-frontend:
+              - 'infra/frontend/Dockerfile'
+              - 'frontend/**'
+            campus-spark:
+              - 'infra/spark/Dockerfile'
+              - 'processing/spark/**'
+              - 'shared/**'
+            campus-flink:
+              - 'processing/flink/Dockerfile'
+              - 'processing/flink/**'
+              - 'shared/**'
+            campus-flink-submit:
+              - 'processing/flink/Dockerfile'
+              - 'processing/flink/**'
+              - 'shared/**'
+            campus-ml-training:
+              - 'ml/Dockerfile'
+              - 'ml/**'
+              - 'shared/**'
+            campus-ml-inference:
+              - 'ml/Dockerfile'
+              - 'ml/**'
+              - 'shared/**'
+            campus-airflow:
+              - 'airflow/Dockerfile'
+              - 'airflow/**'
+              - 'infra/spark/Dockerfile'
+
+      - name: Build filtered matrix
+        id: set-matrix
+        env:
+          CHANGES: ${{ steps.filter.outputs.changes }}
+          EVENT:   ${{ github.event_name }}
+        run: |
+          ALL='[
+            {"service":"campus-api",          "dockerfile":"api/Dockerfile",              "context":"."},
+            {"service":"campus-bridge",        "dockerfile":"bridge/Dockerfile",           "context":"."},
+            {"service":"campus-simulator",     "dockerfile":"simulator/Dockerfile",        "context":"."},
+            {"service":"campus-frontend",      "dockerfile":"infra/frontend/Dockerfile",   "context":"."},
+            {"service":"campus-spark",         "dockerfile":"infra/spark/Dockerfile",      "context":".", "target":"cluster"},
+            {"service":"campus-flink",         "dockerfile":"processing/flink/Dockerfile", "context":".", "target":"cluster"},
+            {"service":"campus-flink-submit",  "dockerfile":"processing/flink/Dockerfile", "context":"."},
+            {"service":"campus-ml-training",   "dockerfile":"ml/Dockerfile",               "context":".", "target":"training"},
+            {"service":"campus-ml-inference",  "dockerfile":"ml/Dockerfile",               "context":".", "target":"inference"},
+            {"service":"campus-airflow",       "dockerfile":"airflow/Dockerfile",          "context":"."}
+          ]'
+
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            # Manual run → rebuild everything
+            FILTERED=$ALL
+          else
+            FILTERED=$(echo "$ALL" | jq --argjson c "$CHANGES" \
+              '[.[] | select(.service as $s | $c | index($s) != null)]')
+          fi
+
+          echo "matrix={\"include\":$FILTERED}" >> "$GITHUB_OUTPUT"
+          echo "any-changed=$(echo "$FILTERED" | jq 'length > 0')" >> "$GITHUB_OUTPUT"
+
+  # ── Build + push only the changed images ───────────────────────────────────
   build-push:
+    needs: changes
+    if: needs.changes.outputs.any-changed == 'true'
     name: Build ${{ matrix.service }}
     runs-on: ubuntu-22.04
     permissions:
@@ -21,51 +105,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - service: campus-api
-            dockerfile: api/Dockerfile
-            context: .
-
-          - service: campus-bridge
-            dockerfile: bridge/Dockerfile
-            context: .
-
-          - service: campus-simulator
-            dockerfile: simulator/Dockerfile
-            context: .
-
-          - service: campus-frontend
-            dockerfile: infra/frontend/Dockerfile
-            context: .
-
-          - service: campus-spark
-            dockerfile: infra/spark/Dockerfile
-            context: .
-            target: cluster
-
-          - service: campus-flink
-            dockerfile: processing/flink/Dockerfile
-            context: .
-            target: cluster
-
-          - service: campus-flink-submit
-            dockerfile: processing/flink/Dockerfile
-            context: .
-
-          - service: campus-ml-training
-            dockerfile: ml/Dockerfile
-            context: .
-            target: training
-
-          - service: campus-ml-inference
-            dockerfile: ml/Dockerfile
-            context: .
-            target: inference
-
-          - service: campus-airflow
-            dockerfile: airflow/Dockerfile
-            context: .
+      matrix: ${{ fromJson(needs.changes.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v4
