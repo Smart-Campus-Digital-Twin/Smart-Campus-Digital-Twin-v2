@@ -44,7 +44,6 @@ metadata:
   namespace: campus
 spec:
   selector:
-    app: frontend
-  ports:
+    app: frontend  type: LoadBalancer  ports:
     - port: 3000
       targetPort: 3000
