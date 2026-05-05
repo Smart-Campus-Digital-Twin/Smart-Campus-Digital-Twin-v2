@@ -5,6 +5,10 @@
 SELECT 'CREATE DATABASE airflow'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'airflow')\gexec
 
+-- Keycloak uses its own database (configured via env/keycloak.env).
+SELECT 'CREATE DATABASE keycloak'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\gexec
+
 -- PostgreSQL 16 schema bootstrap — Smart Campus Digital Twin
 --
 -- Responsibilities:

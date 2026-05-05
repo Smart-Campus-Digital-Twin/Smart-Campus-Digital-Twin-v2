@@ -34,6 +34,7 @@ volumes:
   spark-work:
   prometheus-data:
   mlflow-data:
+  kong-config:
 
 
 services:
@@ -226,6 +227,22 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: campus-keycloak
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:8083:8080"    # Keycloak Web UI / token endpoint — local only
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: [env/keycloak.env]
+    volumes:
+      - ./infra/keycloak/realm-campus.json:/opt/keycloak/data/import/realm-campus.json:ro
+    command: ["start-dev", "--import-realm"]
+
 
   # ==========================================================================
   # Layer 5a — Simulator (sensor data generator)
@@ -782,3 +799,62 @@ services:
   #       limits:
   #         memory: 2G
   #         cpus: "2.0"
+
+#==========================================================================
+# Gateway — Kong (DB-less) + Keycloak JWKS → Kong JWT config init
+# ==========================================================================
+
+  kong-config-init:
+    image: python:3.11-slim
+    container_name: campus-kong-config-init
+    networks: [campus]
+    depends_on:
+      keycloak:
+        condition: service_started
+    environment:
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_REALM: campus
+      JWT_ISSUER: http://localhost:8083/realms/campus
+      KONG_TEMPLATE_PATH: /templates/kong.template.yml
+      KONG_OUT_PATH: /kong/kong.generated.yml
+    volumes:
+      - ./infra/kong/kong.template.yml:/templates/kong.template.yml:ro
+      - ./infra/kong/render_kong_config.py:/scripts/render_kong_config.py:ro
+      - kong-config:/kong
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -e
+        python -m pip install --no-cache-dir requests cryptography
+        python /scripts/render_kong_config.py
+    restart: "no"
+
+  kong:
+    image: kong:3.7
+    container_name: campus-kong
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:${KONG_PROXY_HOST_PORT:-8002}:8000"    # Kong proxy — local only
+      - "127.0.0.1:${KONG_ADMIN_HOST_PORT:-8001}:8001"    # Kong admin API — local only (dev)
+    depends_on:
+      kong-config-init:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.generated.yml
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+    volumes:
+      - kong-config:/kong:ro
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
