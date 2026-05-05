@@ -303,17 +303,18 @@ services:
         condition: service_healthy
     volumes:
       - ./infra/flink/flink-conf.yaml:/opt/flink/conf/flink-conf.yaml:ro
+      - ./processing/flink:/app/processing/flink:ro
     env_file:
       - env/kafka.env
       - env/influxdb.env
       - env/postgres.env
     environment:
-      MLFLOW_TRACKING_URI: http://mlflow:5000
+      PREDICTION_SERVICE_URL: http://ml-prediction:8001
     command: taskmanager
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 2G
           cpus: "2.0"
 
   # Submits all three PyFlink jobs once the cluster + dependencies are ready.
@@ -332,12 +333,15 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+    volumes:
+      - ./processing/flink:/app/processing/flink:ro
     env_file:
       - env/kafka.env
       - env/influxdb.env
       - env/postgres.env
     environment:
       FLINK_MASTER: flink-jobmanager:8081
+      PREDICTION_SERVICE_URL: http://ml-prediction:8001
     restart: "no"
 
   # ==========================================================================
@@ -565,7 +569,7 @@ services:
     restart: unless-stopped
     networks: [campus]
     ports:
-      - "3000:3000"
+      - "3002:3000"
     depends_on:
       influxdb:
         condition: service_healthy
@@ -587,7 +591,7 @@ services:
   # ==========================================================================
 
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.10.2
+    image: ghcr.io/mlflow/mlflow:v2.13.0
     container_name: campus-mlflow
     restart: unless-stopped
     networks: [campus]
@@ -684,3 +688,69 @@ services:
         limits:
           memory: 1G
           cpus: "1.0"
+
+  # ==========================================================================
+  # Layer 12 — Three.js / Next.js frontend (git submodule: frontend/)
+  # ==========================================================================
+  #
+  # Source lives in the frontend/ git submodule (I3-Sys.Eng-Frontend repo).
+  # To pull the latest frontend changes:
+  #   git submodule update --remote --merge
+  #   make frontend-build   # rebuilds the Docker image
+  #
+  # Accessible at http://localhost:3001  (Grafana is at http://localhost:3002)
+
+  frontend:
+    build:
+      context: .
+      dockerfile: infra/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    container_name: campus-frontend
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "3001:3000"    # Three.js dashboard — http://localhost:3001
+    depends_on:
+      api:
+        condition: service_started
+    env_file: [env/frontend.env]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Real-time prediction service - lightweight API for Flink jobs
+  ml-prediction:
+    build:
+      context: ml/prediction_service
+      dockerfile: Dockerfile
+    container_name: campus-ml-prediction
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "8001:8001"
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_ORG=smart-campus
+      - INFLUXDB_BUCKET=campus_predictions
+    env_file:
+      - env/influxdb.env
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"

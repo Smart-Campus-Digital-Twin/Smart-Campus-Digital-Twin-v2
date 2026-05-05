@@ -80,7 +80,7 @@ def run(week_str: str | None = None) -> None:
     flux = f"""
 from(bucket: "{config.influxdb_bucket_1h}")
   |> range(start: {start_rfc}, stop: {stop_rfc})
-  |> filter(fn: (r) => r._measurement == "sensor_1h")
+  |> filter(fn: (r) => r._measurement =~ /^sensor_1h_/)
   |> pivot(
        rowKey: ["_time", "building_id", "room_id", "sensor_type"],
        columnKey: ["_field"],

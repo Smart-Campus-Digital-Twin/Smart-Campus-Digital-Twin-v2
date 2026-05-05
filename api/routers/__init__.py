@@ -1,3 +1,3 @@
-from . import alerts, buildings, health, metrics, reports
+from . import alerts, buildings, campus, health, metrics, reports, predictions
 
-__all__ = ["alerts", "buildings", "health", "metrics", "reports"]
+__all__ = ["alerts", "buildings", "campus", "health", "metrics", "reports", "predictions"]

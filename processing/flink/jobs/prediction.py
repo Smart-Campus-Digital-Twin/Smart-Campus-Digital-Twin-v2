@@ -3,29 +3,24 @@ Flink Real-Time Congestion Prediction Job.
 
 Reads sensor occupancy messages from Kafka (sensors.occupancy),
 builds lag/rolling features from an in-process rolling history per room,
-loads XGBoost models from MLflow, and writes next-slot occupancy
-predictions to the campus_predictions InfluxDB bucket.
+and calls the ML Prediction Service API for predictions.
 
 Design notes:
   - parallelism=1 so a single Python operator owns all room histories —
-    avoids doubling model memory and RocksDB state overhead.
+    avoids splitting history across slots.
   - History is kept in a plain Python dict (self._history), NOT in Flink
-    managed ListState, which would trigger expensive RocksDB I/O and a
-    1 GB Beam state cache per worker on every event.
-  - Models are loaded eagerly in open() so failures surface immediately
-    and the hot path stays exception-free.
+    managed ListState, which would trigger expensive RocksDB I/O.
+  - Predictions are delegated to a dedicated microservice that loads
+    models once at startup, avoiding memory overhead in Flink workers.
 """
 from __future__ import annotations
 
 import json
 import logging
 import os
-from datetime import datetime
-
-import mlflow
-import mlflow.xgboost
-import numpy as np
-from xgboost import XGBRegressor
+import urllib.request
+import urllib.error
+from datetime import datetime, timezone
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.functions import KeyedProcessFunction, RuntimeContext
 from pyflink.common.watermark_strategy import WatermarkStrategy
@@ -33,65 +28,31 @@ from pyflink.datastream.connectors.kafka import (
     KafkaSource, KafkaOffsetsInitializer,
 )
 from pyflink.common.serialization import SimpleStringSchema
-from influxdb_client import InfluxDBClient, Point, WritePrecision
-from influxdb_client.client.write_api import SYNCHRONOUS
 
 log = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────────────────────────────
-KAFKA_BROKERS       = os.environ.get("KAFKA_BROKERS",      "kafka:9092")
-INFLUX_URL          = os.environ.get("INFLUXDB_URL",       "http://influxdb:8086")
-INFLUX_TOKEN        = os.environ.get("INFLUXDB_TOKEN",     "")
-INFLUX_ORG          = os.environ.get("INFLUXDB_ORG",       "smart-campus")
-INFLUX_BUCKET       = os.environ.get("INFLUXDB_BUCKET",    "campus_predictions")
-MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI","http://mlflow:5000")
+KAFKA_BROKERS          = os.environ.get("KAFKA_BROKERS",         "kafka:9092")
+PREDICTION_SERVICE_URL = os.environ.get("PREDICTION_SERVICE_URL", "http://ml-prediction:8001")
 
-CANTEEN_MODEL_NAME  = "campus_canteen_congestion"
-LIBRARY_MODEL_NAME  = "campus_library_congestion"
-HISTORY_SLOTS       = 50    # ~25 hours of 30-min windows per room
-LAGS_NEEDED         = [1, 2, 4, 8, 48]
+HISTORY_SLOTS = 50    # ~25 hours of 30-min windows per room
+LAGS_NEEDED   = [1, 2, 4, 8, 48]
+
+# Mapping building_id → room_type for congestion prediction targets.
+# Only these buildings are predicted; all other occupancy readings are skipped.
+_CANTEEN_BUILDINGS = {"goda-canteen", "sentra-court", "l-canteen", "wala-canteen"}
+_LIBRARY_BUILDINGS = {"library"}
 
 
-# ── Feature vector builder ────────────────────────────────────────────────────
+def _infer_room_type(building_id: str) -> str | None:
+    """Return 'canteen', 'library', or None if this building is not a prediction target."""
+    if building_id in _CANTEEN_BUILDINGS:
+        return "canteen"
+    if building_id in _LIBRARY_BUILDINGS:
+        return "library"
+    return None
 
-def _build_feature_vector(msg: dict, history: list[float]) -> np.ndarray | None:
-    if len(history) < max(LAGS_NEEDED):
-        return None
 
-    ts    = datetime.fromisoformat(msg["timestamp"])
-    hour  = ts.hour + ts.minute / 60.0
-    dow   = ts.weekday()
-    month = ts.month
-
-    sin_h, cos_h = np.sin(2*np.pi*hour/24),  np.cos(2*np.pi*hour/24)
-    sin_d, cos_d = np.sin(2*np.pi*dow/7),    np.cos(2*np.pi*dow/7)
-    sin_m, cos_m = np.sin(2*np.pi*month/12), np.cos(2*np.pi*month/12)
-
-    lags  = [history[-n] if n <= len(history) else 0.0 for n in LAGS_NEEDED]
-    roll3 = float(np.mean(history[-3:])) if len(history) >= 3 else 0.0
-    roll6 = float(np.mean(history[-6:])) if len(history) >= 6 else 0.0
-    std3  = float(np.std(history[-3:]))  if len(history) >= 3 else 0.0
-    std6  = float(np.std(history[-6:]))  if len(history) >= 6 else 0.0
-
-    ctx  = msg.get("context", {})
-    feat = [
-        sin_h, cos_h, sin_d, cos_d, sin_m, cos_m,
-        float(ctx.get("is_weekend",          0)),
-        float(ctx.get("is_holiday",          0)),
-        float(ctx.get("is_exam_period",      0)),
-        float(ctx.get("is_low_attendance",   0)),
-        float(ctx.get("is_essentially_empty",0)),
-        float(ctx.get("tua_active",          0)),
-        float(ctx.get("lecture_scale",       1.0)),
-        float(ctx.get("congestion_fraction", 1.0)),
-        float(1 if ctx.get("active_events") else 0),
-        float(msg.get("capacity", 100)),
-        # activity one-hots — zeros until live Postgres lookup is wired in
-        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        *lags,
-        roll3, roll6, std3, std6,
-    ]
-    return np.array(feat, dtype=np.float32).reshape(1, -1)
 
 
 # ── Flink Process Function ────────────────────────────────────────────────────
@@ -101,56 +62,44 @@ class CongestionPredictionFunction(KeyedProcessFunction):
     Maintains per-room occupancy history in a plain Python dict (no Flink
     managed state / RocksDB).  History is lost on job restart but rebuilds
     within HISTORY_SLOTS events — acceptable for a warm-up period.
+    
+    Delegates predictions to the ML Prediction Service via HTTP.
     """
 
     def __init__(self):
-        # Plain Python dicts — no Flink ListState, no RocksDB overhead
         self._history: dict[str, list[float]] = {}
-        self._models:  dict[str, object]      = {}   # room_type -> pyfunc model
-        self._influx_client = None
-        self._write_api     = None
+        self._predict_url: str = f"{PREDICTION_SERVICE_URL}/predict/congestion"
 
     def open(self, runtime_context: RuntimeContext):
-        self._influx_client = InfluxDBClient(
-            url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG
-        )
-        self._write_api = self._influx_client.write_api(write_options=SYNCHRONOUS)
-
-        # Load both XGBoost models directly — lighter than mlflow.pyfunc.load_model
-        # which wraps the model in a heavy Python environment object.
-        mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-        client = mlflow.tracking.MlflowClient()
-        for model_name, room_type in [
-            (CANTEEN_MODEL_NAME, "canteen"),
-            (LIBRARY_MODEL_NAME, "library"),
-        ]:
-            try:
-                versions = client.get_latest_versions(model_name, stages=["Production"])
-                if not versions:
-                    log.warning("No Production version for '%s' — skipping.", model_name)
-                    continue
-                run_id = versions[0].run_id
-                model_uri = f"runs:/{run_id}/model"
-                self._models[room_type] = mlflow.xgboost.load_model(model_uri)
-                log.info("Loaded XGBoost model '%s' run=%s", model_name, run_id[:8])
-            except Exception as exc:
-                log.warning(
-                    "Model '%s' not available — predictions skipped: %s",
-                    model_name, exc,
-                )
+        log.info("Prediction function ready, endpoint: %s", self._predict_url)
 
     def process_element(self, value: str, ctx):
         try:
-            msg = json.loads(value)
+            envelope = json.loads(value)
+            # KafkaMessage envelope: {"message_id":..., "reading": {SensorReading}}
+            reading = envelope.get("reading") or envelope
         except (json.JSONDecodeError, ValueError):
             return
 
-        room_type = msg.get("room_type")
-        if room_type not in ("canteen", "library"):
+        # Only process occupancy sensor data
+        if reading.get("sensor_type") != "occupancy":
             return
 
-        room_id = msg.get("room_id", "unknown")
-        avg_val = float(msg.get("avg", 0.0))
+        building_id = reading.get("building_id", "")
+        room_type   = _infer_room_type(building_id)
+        if room_type is None:
+            return  # Not a canteen or library — skip
+
+        room_id  = reading.get("room_id", "unknown")
+        avg_val  = float(reading.get("value", 0.0))
+        capacity = float(reading.get("capacity", 100.0))
+
+        # Convert ts (unix ms) → ISO timestamp string
+        ts_ms = reading.get("ts")
+        if ts_ms:
+            timestamp = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).isoformat()
+        else:
+            timestamp = datetime.now(tz=timezone.utc).isoformat()
 
         # Update in-process rolling history
         history = self._history.get(room_id, [])
@@ -159,37 +108,39 @@ class CongestionPredictionFunction(KeyedProcessFunction):
             history = history[-HISTORY_SLOTS:]
         self._history[room_id] = history
 
-        features = _build_feature_vector(msg, history)
-        if features is None:
-            return   # still warming up lag window
-
-        model: XGBRegressor | None = self._models.get(room_type)
-        if model is None:
-            return   # model not yet in Production
-
-        try:
-            prediction = float(model.predict(features)[0])
-        except Exception as exc:
-            log.warning("Prediction failed for room %s: %s", room_id, exc)
+        # Skip if not enough history for lag features
+        if len(history) < max(LAGS_NEEDED):
             return
 
-        point = (
-            Point("predicted_occupancy")
-            .tag("room_id",     room_id)
-            .tag("building_id", msg.get("building_id", "unknown"))
-            .tag("room_type",   room_type)
-            .field("predicted_avg", prediction)
-            .field("actual_avg",    avg_val)
-            .time(msg["timestamp"], WritePrecision.SECONDS)
-        )
+        # Call prediction service
+        payload = {
+            "room_id":     room_id,
+            "room_type":   room_type,
+            "building_id": building_id,
+            "timestamp":   timestamp,
+            "avg":         avg_val,
+            "capacity":    capacity,
+            "history":     history,
+            "context":     {},
+        }
+
         try:
-            self._write_api.write(bucket=INFLUX_BUCKET, record=point)
+            body = json.dumps(payload).encode("utf-8")
+            req  = urllib.request.Request(
+                self._predict_url,
+                data=body,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                result = json.loads(resp.read().decode())
+            log.debug("Prediction for %s: %.2f (written=%s)",
+                     room_id, result.get("predicted_avg"), result.get("written_to_influx"))
         except Exception as exc:
-            log.warning("InfluxDB write failed: %s", exc)
+            log.warning("Prediction API call failed for room %s: %s", room_id, exc)
 
     def close(self):
-        if self._influx_client:
-            self._influx_client.close()
+        pass  # No external resources to release
 
 
 # ── Flink job entrypoint ──────────────────────────────────────────────────────

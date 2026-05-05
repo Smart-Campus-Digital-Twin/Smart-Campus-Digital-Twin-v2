@@ -1,0 +1,3 @@
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/Smart-Campus-Digital-Twin/I3-Sys.Eng-Frontend.git

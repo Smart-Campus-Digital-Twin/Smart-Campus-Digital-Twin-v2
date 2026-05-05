@@ -85,7 +85,7 @@ class InfluxAPIClient:
         flux = f"""
 from(bucket: "{config.influxdb_bucket_raw}")
   |> range(start: -{range_minutes}m)
-  |> filter(fn: (r) => r._measurement == "sensors")
+  |> filter(fn: (r) => r._measurement =~ /^sensor_[a-z]/)
   |> filter(fn: (r) => r.building_id == "{building_id}")
   |> filter(fn: (r) => r._field == "value" or r._field == "quality" or r._field == "sensor_id")
   |> last()
@@ -113,19 +113,18 @@ from(bucket: "{config.influxdb_bucket_raw}")
         if sensor_type is not None:
             _validate_tag(sensor_type, "sensor_type")
 
-        bucket      = config.influxdb_bucket_1m if resolution == "1m" else config.influxdb_bucket_1h
-        measurement = "sensor_1m" if resolution == "1m" else "sensor_1h"
-        type_filter = (
-            f'|> filter(fn: (r) => r.sensor_type == "{sensor_type}")'
-            if sensor_type else ""
-        )
+        bucket = config.influxdb_bucket_1m if resolution == "1m" else config.influxdb_bucket_1h
+        prefix = "sensor_1m" if resolution == "1m" else "sensor_1h"
+        if sensor_type:
+            meas_filter = f'r._measurement == "{prefix}_{sensor_type}"'
+        else:
+            meas_filter = f'r._measurement =~ /^{prefix}_/'
 
         flux = f"""
 from(bucket: "{bucket}")
   |> range(start: {_utc(start)}, stop: {_utc(stop)})
-  |> filter(fn: (r) => r._measurement == "{measurement}")
+  |> filter(fn: (r) => {meas_filter})
   |> filter(fn: (r) => r.room_id == "{room_id}")
-  {type_filter}
   |> pivot(
        rowKey: ["_time", "room_id", "building_id", "sensor_type"],
        columnKey: ["_field"],
@@ -134,6 +133,58 @@ from(bucket: "{bucket}")
   |> keep(columns: ["_time", "room_id", "building_id", "sensor_type",
                      "min", "max", "avg", "stddev", "count", "quality_avg"])
   |> sort(columns: ["_time"])
+"""
+        return await self._query(flux)
+
+    async def all_buildings_latest(self, range_minutes: int = 5) -> pd.DataFrame:
+        """
+        Latest sensor reading per (building_id, room_id, sensor_type) across ALL buildings.
+
+        Returns raw per-room rows so the caller can decide how to aggregate
+        (sum for occupancy/energy, mean for temperature).
+        Columns: building_id, room_id, sensor_type, _value
+        """
+        flux = f"""
+from(bucket: "{config.influxdb_bucket_raw}")
+  |> range(start: -{range_minutes}m)
+  |> filter(fn: (r) => r._measurement =~ /^sensor_[a-z]/)
+  |> filter(fn: (r) => r._field == "value")
+  |> last()
+  |> keep(columns: ["building_id", "room_id", "sensor_type", "_value"])
+"""
+        return await self._query(flux)
+
+    async def building_rooms_latest(self, building_id: str, range_minutes: int = 5) -> pd.DataFrame:
+        """
+        Latest sensor reading per room for a single building.
+
+        Columns: room_id, floor, sensor_type, _value
+        """
+        _validate_tag(building_id, "building_id")
+        flux = f"""
+from(bucket: "{config.influxdb_bucket_raw}")
+  |> range(start: -{range_minutes}m)
+  |> filter(fn: (r) => r._measurement == "sensors")
+  |> filter(fn: (r) => r.building_id == "{building_id}")
+  |> filter(fn: (r) => r._field == "value")
+  |> last()
+  |> keep(columns: ["room_id", "floor", "sensor_type", "_value"])
+"""
+        return await self._query(flux)
+
+    async def all_buildings_anomaly_counts(self, range_minutes: int = 5) -> pd.DataFrame:
+        """
+        Count of anomaly events per building in the last N minutes.
+
+        Columns: building_id, _value (count)
+        """
+        flux = f"""
+from(bucket: "{config.influxdb_bucket_raw}")
+  |> range(start: -{range_minutes}m)
+  |> filter(fn: (r) => r._measurement == "anomalies")
+  |> filter(fn: (r) => r._field == "value")
+  |> group(columns: ["building_id"])
+  |> count()
 """
         return await self._query(flux)
 
