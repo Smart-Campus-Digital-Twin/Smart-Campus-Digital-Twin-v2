@@ -45,7 +45,7 @@ def _parse_and_to_line_protocol(raw: str) -> str | None:
     Returns None on parse failure; the caller uses flat_map to drop None results.
     """
     try:
-        return KafkaMessage.from_json(raw).reading.to_line_protocol(measurement="sensors")
+        return KafkaMessage.from_json(raw).reading.to_line_protocol()
     except (json.JSONDecodeError, ValidationError, KeyError) as exc:
         logger.warning("Dropped unparseable message", extra={"reason": str(exc)})
         return None

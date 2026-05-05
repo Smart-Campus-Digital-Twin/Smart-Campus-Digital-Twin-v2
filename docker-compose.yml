@@ -1,15 +1,15 @@
 # Smart Campus Digital Twin — full pipeline stack
 #
 # Services (startup order):
-#   mosquitto → kafka → influxdb → postgres
+#   mosquitto → kafka → influxdb → postgres → redis
 #   → bridge → flink-jobmanager → flink-taskmanager → flink-submit
-#   → spark-master → spark-worker → airflow → api → grafana
+#   → spark-master → spark-worker → airflow → api → grafana → frontend
 #
 # Usage:
-#   cp env/*.env.example env/*.env   # then fill in real values
-#   make up                          # starts everything
-#   make logs                        # tail all logs
-#   make down                        # stop and remove containers
+#   make env    # copy .env.example files
+#   make up     # start all services
+#   make logs   # tail logs
+#   make down   # stop containers
 
 # ---------------------------------------------------------------------------
 # Shared network — all services use the same bridge so they can reach each
@@ -28,10 +28,12 @@ volumes:
   influxdb-data:
   influxdb-config:
   postgres-data:
+  redis-data:
   grafana-data:
   airflow-logs:
   spark-work:
   prometheus-data:
+  mlflow-data:
 
 
 services:
@@ -201,6 +203,31 @@ services:
       retries: 10
 
   # ==========================================================================
+  # Layer 4b — Redis cache
+  # ==========================================================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: campus-redis
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ==========================================================================
   # Layer 5a — Simulator (sensor data generator)
   # ==========================================================================
 
@@ -302,6 +329,7 @@ services:
         condition: service_healthy
     volumes:
       - ./infra/flink/flink-conf.yaml:/opt/flink/conf/flink-conf.yaml:ro
+      - ./processing/flink:/app/processing/flink:ro
     env_file:
       - env/kafka.env
       - env/influxdb.env
@@ -310,8 +338,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
-          cpus: "1.0"
+          memory: 4G
+          cpus: "2.0"
 
   # Submits all three PyFlink jobs once the cluster + dependencies are ready.
   flink-submit:
@@ -329,6 +357,8 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+    volumes:
+      - ./processing/flink:/app/processing/flink:ro
     env_file:
       - env/kafka.env
       - env/influxdb.env
@@ -542,10 +572,14 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - env/influxdb.env
       - env/postgres.env
       - env/api.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
     deploy:
       resources:
         limits:
@@ -562,7 +596,7 @@ services:
     restart: unless-stopped
     networks: [campus]
     ports:
-      - "3000:3000"
+      - "3002:3000"
     depends_on:
       influxdb:
         condition: service_healthy
@@ -578,3 +612,173 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
+
+  # ==========================================================================
+  # Layer 11 — Machine Learning (MLflow, Training, Inference)
+  # ==========================================================================
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.13.0
+    container_name: campus-mlflow
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=sqlite:////mlflow/mlflow.db
+      - MLFLOW_ARTIFACT_ROOT=/mlflow/artifacts
+    # --serve-artifacts proxies all artifact uploads through the REST API (no
+    # direct filesystem access needed from training/inference containers).
+    # --artifacts-destination sets the actual on-disk location inside this container.
+    command: >
+      mlflow server
+        --backend-store-uri sqlite:////mlflow/mlflow.db
+        --artifacts-destination /mlflow/artifacts
+        --default-artifact-root mlflow-artifacts:/
+        --host 0.0.0.0
+        --port 5000
+        --serve-artifacts
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  # Stays alive so Airflow can docker exec into it for weekly kedro retraining.
+  # Bootstrap (first-time seeding) is run manually once:
+  #   docker exec campus-ml-training python /opt/campus/ml/bootstrap_training.py
+  ml-training:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+      target: training
+    container_name: campus-ml-training
+    restart: unless-stopped
+    networks: [campus]
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - .:/opt/campus
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - KEDRO_DISABLE_TELEMETRY=true
+      - PYTHONPATH=/opt/campus
+      - PYTHONWARNINGS=ignore
+      - GIT_PYTHON_REFRESH=quiet
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+
+  # Stays alive so Airflow can docker exec into it for daily batch inference.
+  ml-inference:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+      target: inference
+    container_name: campus-ml-inference
+    restart: unless-stopped
+    networks: [campus]
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    volumes:
+      - .:/opt/campus
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=campus
+    env_file:
+      - env/postgres.env
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+
+  # ==========================================================================
+  # Layer 12 — Three.js / Next.js frontend (git submodule: frontend/)
+  # ==========================================================================
+  #
+  # Source lives in the frontend/ git submodule (I3-Sys.Eng-Frontend repo).
+  # To pull the latest frontend changes:
+  #   git submodule update --remote --merge
+  #   make frontend-build   # rebuilds the Docker image
+  #
+  # Accessible at http://localhost:3001  (Grafana is at http://localhost:3002)
+
+  frontend:
+    build:
+      context: .
+      dockerfile: infra/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    container_name: campus-frontend
+    restart: unless-stopped
+    networks: [campus]
+    ports:
+      - "3001:3000"    # Three.js dashboard — http://localhost:3001
+    depends_on:
+      api:
+        condition: service_started
+    env_file: [env/frontend.env]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Real-time prediction service - lightweight API for Flink jobs
+  # DISABLED: Causing issues, commented out for now
+  # ml-prediction:
+  #   build:
+  #     context: ml/prediction_service
+  #     dockerfile: Dockerfile
+  #   container_name: campus-ml-prediction
+  #   restart: unless-stopped
+  #   networks: [campus]
+  #   ports:
+  #     - "8001:8001"
+  #   depends_on:
+  #     mlflow:
+  #       condition: service_healthy
+  #     influxdb:
+  #       condition: service_healthy
+  #   environment:
+  #     - MLFLOW_TRACKING_URI=http://mlflow:5000
+  #     - INFLUXDB_URL=http://influxdb:8086
+  #     - INFLUXDB_ORG=smart-campus
+  #     - INFLUXDB_BUCKET=campus_predictions
+  #   env_file:
+  #     - env/influxdb.env
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 2G
+  #         cpus: "2.0"

@@ -1,0 +1,54 @@
+# Smart Campus Digital Twin — Three.js / Next.js frontend
+#
+# Build context is the repo root so git submodule files are available.
+# The Next.js app lives at frontend/frontend/ inside the submodule.
+#
+# Build args (baked into the static bundle at build time):
+#   NEXT_PUBLIC_API_URL  — Base URL of the FastAPI backend (default: /api proxy)
+
+# ---------------------------------------------------------------------------
+# Stage 1 — install npm dependencies
+# ---------------------------------------------------------------------------
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY frontend/frontend/package.json frontend/frontend/package-lock.json ./
+RUN npm ci
+
+# ---------------------------------------------------------------------------
+# Stage 2 — build the Next.js application
+# ---------------------------------------------------------------------------
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY frontend/frontend/ ./
+
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN npm run build
+
+# ---------------------------------------------------------------------------
+# Stage 3 — production runner (minimal image)
+# ---------------------------------------------------------------------------
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs \
+ && adduser  --system --uid 1001 nextjs
+
+COPY --from=builder /app/public          ./public
+COPY --from=builder /app/.next           ./.next
+COPY --from=builder /app/node_modules    ./node_modules
+COPY --from=builder /app/package.json    ./package.json
+
+USER nextjs
+
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+CMD ["npm", "start"]
