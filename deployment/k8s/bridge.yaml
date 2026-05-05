@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: bridge
-          image: campus-bridge:latest
+          image: ghcr.io/smart-campus-digital-twin/campus-bridge:latest
           envFrom:
             - configMapRef:
                 name: campus-common
