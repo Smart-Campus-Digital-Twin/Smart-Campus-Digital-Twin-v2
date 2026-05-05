@@ -19,34 +19,28 @@ spec:
           ports:
             - containerPort: 8000
           envFrom:
-            - configMapRef:
-                name: campus-common
             - secretRef:
-                name: campus-postgres
+                name: api-env
             - secretRef:
-                name: campus-influxdb
+                name: postgres-env
+            - secretRef:
+                name: influxdb-env
           env:
-            - name: DATABASE_URL
-              value: postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)
+            - name: REDIS_URL
+              value: redis://redis:6379/0
           resources:
             requests:
-              memory: 128Mi
-              cpu: 100m
+              memory: 64Mi
+              cpu: 50m
             limits:
               memory: 256Mi
-              cpu: 250m
+              cpu: 200m
           readinessProbe:
             httpGet:
-              path: /health
+              path: /api/health
               port: 8000
-            initialDelaySeconds: 10
+            initialDelaySeconds: 15
             periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8000
-            initialDelaySeconds: 20
-            periodSeconds: 15
 ---
 apiVersion: v1
 kind: Service
