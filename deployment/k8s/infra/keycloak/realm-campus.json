@@ -2,6 +2,7 @@
   "realm": "campus",
   "enabled": true,
   "displayName": "Smart Campus",
+  "sslRequired": "none",
   "clients": [
     {
       "clientId": "campus-dev",
