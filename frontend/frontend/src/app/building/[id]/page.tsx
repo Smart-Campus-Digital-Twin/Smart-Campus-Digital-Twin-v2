@@ -131,6 +131,7 @@ export default function DynamicBuildingPage({ params }: { params: Promise<{ id: 
         maxWidth: isMobile ? '100%' : '800px'
       }}>
         <FloorPlan2D
+          buildingId={id}
           floor={building.floors[floorIndex]}
           floorNumber={floor}
           minFloor={building.minFloor}

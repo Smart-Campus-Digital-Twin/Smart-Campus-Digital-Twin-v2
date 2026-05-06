@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Floor } from "./FloorData";
 
 type Props = {
+  buildingId?: string;
   floor: Floor;
   floorNumber: number;
   minFloor?: number;
@@ -19,6 +20,7 @@ type RoomStats = {
 };
 
 export default function FloorPlan2D({
+  buildingId,
   floor,
   floorNumber,
   minFloor = 0,
@@ -80,6 +82,37 @@ export default function FloorPlan2D({
   const planHeight = (bounds.maxY - bounds.minY) * SCALE;
 
   useEffect(() => {
+    const fetchRoomData = async () => {
+      // If we don't have a buildingId, we generate initial stats and don't poll
+      if (!buildingId) return;
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        // /campus is the public prefix
+        const res = await fetch(`${apiUrl}/campus/buildings/${buildingId}/rooms`);
+        if (res.ok) {
+          const data = await res.json();
+          const newStats: Record<string, RoomStats> = {};
+          data.forEach((room: any) => {
+            // Only update stats if it's the current floor
+            if (room.floor === floorNumber) {
+              newStats[room.room_id] = {
+                temp: room.temperature,
+                occ: room.occupancy,
+              };
+            }
+          });
+          
+          setStats((prev) => ({
+             ...prev,
+             ...newStats
+          }));
+        }
+      } catch (err) {
+        console.error(`Failed to fetch room data for ${buildingId}:`, err);
+      }
+    };
+
+    // Generate fallback initial stats just in case API fails or loading takes time
     const initialStats: Record<string, RoomStats> = {};
     floor.rooms.forEach((room) => {
       if (room.type !== "stairs" && room.type !== "free") {
@@ -90,25 +123,11 @@ export default function FloorPlan2D({
       }
     });
     setStats(initialStats);
+    
+    fetchRoomData();
 
-    const timer = setInterval(() => {
-      setStats((prev) => {
-        const next = { ...prev };
-        Object.keys(next).forEach((id) => {
-          next[id] = {
-            temp: Math.min(
-              35,
-              Math.max(20, next[id].temp + (Math.random() - 0.5)),
-            ),
-            occ: Math.min(
-              100,
-              Math.max(0, next[id].occ + (Math.random() * 10 - 5)),
-            ),
-          };
-        });
-        return next;
-      });
-    }, 3000);
+    // Poll every 3 seconds for room updates
+    const timer = setInterval(fetchRoomData, 3000);
 
     return () => clearInterval(timer);
   }, [floor]);
