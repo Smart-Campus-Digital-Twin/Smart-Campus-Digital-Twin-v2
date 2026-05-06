@@ -17,6 +17,17 @@ spec:
         # Fetch Keycloak JWKS, derive issuer, render declarative kong.yml with JWT consumer
         - name: kong-config-render
           image: alpine:3.19
+          env:
+            - name: KEYCLOAK_INTERNAL_URL
+              value: "http://keycloak:8083"
+            - name: KEYCLOAK_REALM
+              value: "campus"
+            - name: JWT_ISSUER
+              value: "http://167.172.5.124:8083/realms/campus"
+            - name: KONG_TEMPLATE_PATH
+              value: "/template/kong.yml"
+            - name: KONG_OUT_PATH
+              value: "/kong-config/kong.yml"
           command:
             - sh
             - -c
@@ -25,7 +36,7 @@ spec:
               apk add --no-cache curl python3 py3-requests py3-cryptography > /dev/null
 
               # Wait for Keycloak
-              until curl -sf http://keycloak:8083/realms/campus > /dev/null 2>&1; do
+              until curl -sf "${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}" > /dev/null 2>&1; do
                 echo "Waiting for Keycloak..."; sleep 5
               done
 
@@ -34,21 +45,8 @@ spec:
                 echo "Waiting for API..."; sleep 5
               done
 
-              # Derive JWT issuer from realm metadata (respects KC_HOSTNAME_URL)
-              curl -sf http://keycloak:8083/realms/campus > /tmp/realm.json
-              JWT_ISSUER=$(python3 /scripts/get_issuer.py)
               echo "JWT issuer: ${JWT_ISSUER}"
-              export JWT_ISSUER
-
-              # Fetch JWKS, render kong.yml with consumer public key
-              curl -sf "http://keycloak:8083/realms/campus/protocol/openid-connect/certs" > /tmp/jwks.json
-
-              KEYCLOAK_INTERNAL_URL=http://keycloak:8083 \
-              KEYCLOAK_REALM=campus \
-              JWT_ISSUER="${JWT_ISSUER}" \
-              KONG_TEMPLATE_PATH=/template/kong.yml \
-              KONG_OUT_PATH=/kong-config/kong.yml \
-                python3 /scripts/render_kong_config.py
+              python3 /scripts/render_kong_config.py
 
           volumeMounts:
             - name: kong-template
