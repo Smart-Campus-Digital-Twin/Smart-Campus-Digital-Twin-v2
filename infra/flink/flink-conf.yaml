@@ -1,19 +1,34 @@
 jobmanager.rpc.address: flink-jobmanager
 jobmanager.rpc.port: 6123
 jobmanager.memory.process.size: 1024m
+
 taskmanager.memory.process.size: 4096m
-# Cap the Beam Python state cache — default 1 GB per worker causes OOM when
-# running 4 PyFlink jobs with ML model loading. 50 MB is enough since the
-# prediction job uses no Flink managed state (plain Python dicts).
-python.state.cache-size: 52428800
-taskmanager.numberOfTaskSlots: 8
+
+# Right-sized for 3 jobs × parallelism 2 = 6 slots max.
+# Keep 6 so there is no slot contention and managed memory per slot is larger.
+taskmanager.numberOfTaskSlots: 6
+
 parallelism.default: 2
-state.backend: rocksdb
-state.backend.incremental: true
-execution.checkpointing.interval: 30000
+
+# ── State backend (Flink 1.20.x keys — old keys silently ignored) ──────────
+state.backend.type: rocksdb
+execution.checkpointing.incremental: true
+
+# ── Checkpointing ───────────────────────────────────────────────────────────
+execution.checkpointing.interval: 60000
 execution.checkpointing.mode: EXACTLY_ONCE
-execution.checkpointing.min-pause: 15000
-execution.checkpointing.timeout: 120000
+execution.checkpointing.min-pause: 30000
+execution.checkpointing.timeout: 180000
 execution.checkpointing.max-concurrent-checkpoints: 1
+
+# ── Heartbeat — raised to survive GC pauses under CPU load ─────────────────
+# Default timeout is 50 s; 200 % CPU usage causes pauses that exceed that.
+heartbeat.timeout: 120000
+heartbeat.interval: 10000
+
+# ── Python state cache (PyFlink) ────────────────────────────────────────────
+python.state.cache-size: 52428800
+
+# ── Metrics ─────────────────────────────────────────────────────────────────
 metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
 metrics.reporter.prom.port: 9249
