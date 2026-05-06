@@ -25,19 +25,19 @@ resources:
 images:
   - name: campus-api
     newName: ghcr.io/smart-campus-digital-twin/campus-api
-    newTag: latest
+    newTag: Deployment
   - name: campus-bridge
     newName: ghcr.io/smart-campus-digital-twin/campus-bridge
-    newTag: latest
+    newTag: Deployment
   - name: campus-simulator
     newName: ghcr.io/smart-campus-digital-twin/campus-simulator
-    newTag: latest
+    newTag: Deployment
   - name: campus-frontend
     newName: ghcr.io/smart-campus-digital-twin/campus-frontend
-    newTag: latest
+    newTag: Deployment
   - name: campus-ml-training
     newName: ghcr.io/smart-campus-digital-twin/campus-ml-training
-    newTag: latest
+    newTag: Deployment
   - name: campus-ml-inference
     newName: ghcr.io/smart-campus-digital-twin/campus-ml-inference
-    newTag: latest
+    newTag: Deployment

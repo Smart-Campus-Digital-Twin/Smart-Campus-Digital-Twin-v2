@@ -29,11 +29,11 @@ spec:
               value: jdbc:postgresql://postgres:5432/keycloak
           resources:
             requests:
-              memory: 512Mi
-              cpu: 500m
+              memory: 256Mi
+              cpu: 150m
             limits:
-              memory: 1Gi
-              cpu: 1000m
+              memory: 512Mi
+              cpu: 400m
           readinessProbe:
             httpGet:
               path: /health/ready
