@@ -61,10 +61,24 @@ export default function DigitalTwinDashboard() {
   };
 
   useEffect(() => {
-    // Generate initial random stats only on the client
-    setZones(generateInitialZones());
+    const fetchZones = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const res = await fetch(`${apiUrl}/campus/zones`);
+        if (res.ok) {
+          const data = await res.json();
+          setZones(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch zones:", err);
+      }
+    };
 
-    const t = setInterval(() => setZones((prev) => prev.map(updateZone)), 5000);
+    // Initial random stats to show UI immediately then override with true values
+    setZones(generateInitialZones());
+    fetchZones();
+
+    const t = setInterval(fetchZones, 5000);
     return () => clearInterval(t);
   }, []);
 
