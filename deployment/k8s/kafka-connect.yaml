@@ -109,7 +109,7 @@ spec:
               mountPath: /opt/connectors
           resources:
             requests:
-              memory: 2Gi
+              memory: 1Gi
               cpu: 200m
             limits:
               memory: 2Gi

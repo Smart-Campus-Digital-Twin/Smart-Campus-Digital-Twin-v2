@@ -113,7 +113,7 @@ spec:
             - sh
             - -c
             - |
-              until curl -sf http://api:8000/api/health; do
+              until curl -sf http://api:8000/health; do
                 echo "Waiting for API..."; sleep 5
               done
       containers:
@@ -150,10 +150,10 @@ spec:
               subPath: kong.yml
           resources:
             requests:
-              memory: 128Mi
+              memory: 256Mi
               cpu: 100m
             limits:
-              memory: 256Mi
+              memory: 512Mi
               cpu: 300m
           readinessProbe:
             httpGet:
