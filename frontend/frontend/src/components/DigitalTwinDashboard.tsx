@@ -6,10 +6,8 @@ import * as THREE from "three";
 import { Navigation, Eye } from "lucide-react";
 import {
   STABLE_INITIAL_ZONES,
-  generateInitialZones,
   Zone,
 } from "./dashboard/DashboardTypes";
-import { updateZone } from "./dashboard/DashboardHelpers";
 import DashboardSidebar from "./dashboard/DashboardSidebar";
 import DashboardHeader from "./dashboard/DashboardHeader";
 import DashboardScene from "./dashboard/DashboardScene";
@@ -61,11 +59,22 @@ export default function DigitalTwinDashboard() {
   };
 
   useEffect(() => {
-    // Generate initial random stats only on the client
-    setZones(generateInitialZones());
+    let cancelled = false;
 
-    const t = setInterval(() => setZones((prev) => prev.map(updateZone)), 5000);
-    return () => clearInterval(t);
+    const fetchZones = async () => {
+      try {
+        const res = await fetch("/api/campus/zones");
+        if (!res.ok) return;
+        const data: Zone[] = await res.json();
+        if (!cancelled && data.length > 0) setZones(data);
+      } catch {
+        // API unavailable — keep last known state
+      }
+    };
+
+    fetchZones();
+    const t = setInterval(fetchZones, 10_000);
+    return () => { cancelled = true; clearInterval(t); };
   }, []);
 
   useEffect(() => {
@@ -296,6 +305,7 @@ export default function DigitalTwinDashboard() {
             campusOcc={campusOcc}
             activeZonesCount={zones.length}
             criticalCount={criticalCount}
+            zones={zones}
             isMobile={isMobile}
           />
         )}

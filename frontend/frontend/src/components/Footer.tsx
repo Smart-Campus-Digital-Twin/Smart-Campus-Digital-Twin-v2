@@ -19,9 +19,6 @@ export default function Footer() {
       }}
     >
       <p>© 2026 University of Moratuwa - Smart Campus Digital Twin</p>
-      <p style={{ fontSize: "0.7rem", opacity: 0.8 }}>
-        Group I3 • Advanced System Engineering Project
-      </p>
     </footer>
   );
 }

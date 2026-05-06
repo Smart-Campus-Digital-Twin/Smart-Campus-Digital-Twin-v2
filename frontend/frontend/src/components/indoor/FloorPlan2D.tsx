@@ -11,11 +11,21 @@ type Props = {
   goUp: () => void;
   goDown: () => void;
   isMobile?: boolean;
+  buildingId: string;
 };
 
 type RoomStats = {
-  temp: number;
-  occ: number;
+  temp: number | null;
+  occ: number | null;
+  anomaly: boolean;
+};
+
+type RoomApiData = {
+  room_id: string;
+  floor: number;
+  temperature: number;
+  occupancy: number;
+  energy: number;
 };
 
 export default function FloorPlan2D({
@@ -26,6 +36,7 @@ export default function FloorPlan2D({
   goUp,
   goDown,
   isMobile = false,
+  buildingId,
 }: Props) {
   const [stats, setStats] = useState<Record<string, RoomStats>>({});
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
@@ -34,7 +45,6 @@ export default function FloorPlan2D({
   const [userZoom, setUserZoom] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
 
-  // Calculate the bounding box of all rooms to center them (memoized to prevent unnecessary recalculations)
   const bounds = useMemo(
     () => ({
       minX: Math.min(...floor.rooms.map((r) => r.x), 0),
@@ -75,51 +85,58 @@ export default function FloorPlan2D({
   }, [bounds.maxX, bounds.minX, bounds.maxY, bounds.minY]);
 
   const SCALE = dynamicScale * userZoom;
-
   const planWidth = (bounds.maxX - bounds.minX) * SCALE;
   const planHeight = (bounds.maxY - bounds.minY) * SCALE;
 
+  // Fetch live sensor data from the campus API
   useEffect(() => {
-    const initialStats: Record<string, RoomStats> = {};
-    floor.rooms.forEach((room) => {
-      if (room.type !== "stairs" && room.type !== "free") {
-        initialStats[room.id] = {
-          temp: 24 + Math.random() * 6,
-          occ: 20 + Math.random() * 60,
-        };
-      }
-    });
-    setStats(initialStats);
+    let cancelled = false;
 
-    const timer = setInterval(() => {
-      setStats((prev) => {
-        const next = { ...prev };
-        Object.keys(next).forEach((id) => {
-          next[id] = {
-            temp: Math.min(
-              35,
-              Math.max(20, next[id].temp + (Math.random() - 0.5)),
-            ),
-            occ: Math.min(
-              100,
-              Math.max(0, next[id].occ + (Math.random() * 10 - 5)),
-            ),
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`/api/campus/buildings/${buildingId}/rooms`);
+        if (!res.ok) return;
+        const data: RoomApiData[] = await res.json();
+
+        const next: Record<string, RoomStats> = {};
+        for (const room of data) {
+          next[room.room_id] = {
+            temp: room.temperature,
+            occ: room.occupancy,
+            anomaly: room.temperature > 32,
           };
-        });
-        return next;
-      });
-    }, 3000);
+        }
+        if (!cancelled) setStats(next);
+      } catch {
+        // API unavailable — leave existing stats intact
+      }
+    };
 
-    return () => clearInterval(timer);
-  }, [floor]);
+    fetchStats();
+    const timer = setInterval(fetchStats, 10_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [buildingId]);
+
+  const getRoomBackground = (type: string, isHovered: boolean, isOpenArea: boolean) => {
+    if (isOpenArea) return "linear-gradient(135deg, rgba(144,238,144,0.3) 0%, rgba(53,162,159,0.4) 100%)";
+    if (isHovered) return "linear-gradient(135deg, rgba(151,254,237,0.4) 0%, rgba(11,102,106,0.8) 100%)";
+    switch (type) {
+      case "lab":        return "linear-gradient(135deg, rgba(30,80,160,0.75) 0%, rgba(7,25,82,0.9) 100%)";
+      case "office":     return "linear-gradient(135deg, rgba(20,100,60,0.75) 0%, rgba(7,40,30,0.9) 100%)";
+      case "server_room":return "linear-gradient(135deg, rgba(60,20,100,0.85) 0%, rgba(20,10,40,0.95) 100%)";
+      case "library":    return "linear-gradient(135deg, rgba(120,80,20,0.75) 0%, rgba(60,30,5,0.9) 100%)";
+      default:           return "linear-gradient(135deg, rgba(11,102,106,0.75) 0%, rgba(7,25,82,0.9) 100%)";
+    }
+  };
 
   return (
     <div
       style={{
         width: "100%",
         maxWidth: "100%",
-        height: isMobileView ? "auto" : "auto",
-        minHeight: isMobileView ? "40vh" : "auto",
         position: "relative",
         borderRadius: isMobileView ? "8px" : "24px",
         background: "rgba(11, 102, 106, 0.05)",
@@ -150,49 +167,28 @@ export default function FloorPlan2D({
         <button
           onClick={() => setUserZoom((prev) => Math.min(prev + 0.2, 3))}
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: "6px",
-            background: "rgba(7, 25, 82, 0.8)",
-            color: "#97FEED",
-            border: "1px solid #97FEED33",
-            fontWeight: "bold",
-            cursor: "pointer",
+            width: 32, height: 32, borderRadius: "6px",
+            background: "rgba(7, 25, 82, 0.8)", color: "#97FEED",
+            border: "1px solid #97FEED33", fontWeight: "bold", cursor: "pointer",
           }}
-        >
-          +
-        </button>
+        >+</button>
         <button
           onClick={() => setUserZoom((prev) => Math.max(prev - 0.2, 0.5))}
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: "6px",
-            background: "rgba(7, 25, 82, 0.8)",
-            color: "#97FEED",
-            border: "1px solid #97FEED33",
-            fontWeight: "bold",
-            cursor: "pointer",
+            width: 32, height: 32, borderRadius: "6px",
+            background: "rgba(7, 25, 82, 0.8)", color: "#97FEED",
+            border: "1px solid #97FEED33", fontWeight: "bold", cursor: "pointer",
           }}
-        >
-          -
-        </button>
+        >-</button>
         <button
           onClick={() => setUserZoom(1)}
           style={{
-            padding: "0 8px",
-            height: 32,
-            borderRadius: "6px",
-            background: "rgba(7, 25, 82, 0.8)",
-            color: "#97FEED",
-            border: "1px solid #97FEED33",
-            fontSize: "10px",
-            fontWeight: "bold",
-            cursor: "pointer",
+            padding: "0 8px", height: 32, borderRadius: "6px",
+            background: "rgba(7, 25, 82, 0.8)", color: "#97FEED",
+            border: "1px solid #97FEED33", fontSize: "10px",
+            fontWeight: "bold", cursor: "pointer",
           }}
-        >
-          RESET
-        </button>
+        >RESET</button>
       </div>
 
       <div
@@ -207,49 +203,35 @@ export default function FloorPlan2D({
           WebkitOverflowScrolling: "touch",
         }}
         onMouseDown={(e) => {
-          const container = e.currentTarget;
+          const c = e.currentTarget;
           setIsPanning(true);
-          container.dataset.panStartX = String(e.clientX);
-          container.dataset.panStartY = String(e.clientY);
-          container.dataset.panScrollLeft = String(container.scrollLeft);
-          container.dataset.panScrollTop = String(container.scrollTop);
+          c.dataset.panStartX = String(e.clientX);
+          c.dataset.panStartY = String(e.clientY);
+          c.dataset.panScrollLeft = String(c.scrollLeft);
+          c.dataset.panScrollTop = String(c.scrollTop);
         }}
         onMouseMove={(e) => {
           if (!isPanning) return;
-
-          const container = e.currentTarget;
-          const panStartX = Number(container.dataset.panStartX);
-          const panStartY = Number(container.dataset.panStartY);
-          const panScrollLeft = Number(container.dataset.panScrollLeft);
-          const panScrollTop = Number(container.dataset.panScrollTop);
-
-          if (
-            Number.isNaN(panStartX) ||
-            Number.isNaN(panStartY) ||
-            Number.isNaN(panScrollLeft) ||
-            Number.isNaN(panScrollTop)
-          ) {
-            return;
-          }
-
-          container.scrollLeft = panScrollLeft - (e.clientX - panStartX);
-          container.scrollTop = panScrollTop - (e.clientY - panStartY);
+          const c = e.currentTarget;
+          const sx = Number(c.dataset.panStartX);
+          const sy = Number(c.dataset.panStartY);
+          const sl = Number(c.dataset.panScrollLeft);
+          const st = Number(c.dataset.panScrollTop);
+          if (isNaN(sx) || isNaN(sy) || isNaN(sl) || isNaN(st)) return;
+          c.scrollLeft = sl - (e.clientX - sx);
+          c.scrollTop  = st - (e.clientY - sy);
         }}
         onMouseUp={(e) => {
-          const container = e.currentTarget;
           setIsPanning(false);
-          delete container.dataset.panStartX;
-          delete container.dataset.panStartY;
-          delete container.dataset.panScrollLeft;
-          delete container.dataset.panScrollTop;
+          const c = e.currentTarget;
+          delete c.dataset.panStartX; delete c.dataset.panStartY;
+          delete c.dataset.panScrollLeft; delete c.dataset.panScrollTop;
         }}
         onMouseLeave={(e) => {
-          const container = e.currentTarget;
           setIsPanning(false);
-          delete container.dataset.panStartX;
-          delete container.dataset.panStartY;
-          delete container.dataset.panScrollLeft;
-          delete container.dataset.panScrollTop;
+          const c = e.currentTarget;
+          delete c.dataset.panStartX; delete c.dataset.panStartY;
+          delete c.dataset.panScrollLeft; delete c.dataset.panScrollTop;
         }}
       >
         <div
@@ -262,22 +244,13 @@ export default function FloorPlan2D({
           }}
         >
           {floor.planImage ? (
-            <div
-              style={{
-                position: "relative",
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
+            <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", justifyContent: "center" }}>
               <img
                 src={floor.planImage}
                 alt={`Floor ${floorNumber} Plan`}
                 style={{
                   maxWidth: userZoom > 1 ? "none" : "100%",
-                  maxHeight:
-                    userZoom > 1 ? "none" : isMobileView ? "60vh" : "70vh",
+                  maxHeight: userZoom > 1 ? "none" : isMobileView ? "60vh" : "70vh",
                   width: userZoom > 1 ? `${100 * userZoom}%` : "auto",
                   borderRadius: isMobileView ? "8px" : "16px",
                   objectFit: "contain",
@@ -289,10 +262,12 @@ export default function FloorPlan2D({
             </div>
           ) : (
             floor.rooms.map((room) => {
-              const isHovered = hoveredRoom === room.id;
-              const isStairs = room.type === "stairs";
-              const isFree = room.type === "free";
-              const isOpenArea = room.name === "Open Area";
+              const isHovered   = hoveredRoom === room.id;
+              const isStairs    = room.type === "stairs";
+              const isFree      = room.type === "free";
+              const isOpenArea  = room.name === "Open Area";
+              const roomStats   = stats[room.id];
+              const hasData     = !isStairs && !isFree && !isOpenArea && roomStats != null;
 
               return (
                 <div
@@ -302,8 +277,8 @@ export default function FloorPlan2D({
                   style={{
                     position: "absolute",
                     left: (room.x - bounds.minX) * SCALE,
-                    top: (room.y - bounds.minY) * SCALE,
-                    width: room.width * SCALE,
+                    top:  (room.y - bounds.minY) * SCALE,
+                    width:  room.width  * SCALE,
                     height: room.height * SCALE,
                     borderRadius: "0px",
                     border: isHovered
@@ -313,11 +288,7 @@ export default function FloorPlan2D({
                       ? "linear-gradient(135deg, #FFD166 0%, #F5A623 100%)"
                       : isFree
                         ? "rgba(255, 255, 255, 0.05)"
-                        : isOpenArea
-                          ? "linear-gradient(135deg, rgba(144, 238, 144, 0.3) 0%, rgba(53, 162, 159, 0.4) 100%)"
-                          : isHovered
-                            ? "linear-gradient(135deg, rgba(151, 254, 237, 0.4) 0%, rgba(11, 102, 106, 0.8) 100%)"
-                            : "linear-gradient(135deg, rgba(11, 102, 106, 0.75) 0%, rgba(7, 25, 82, 0.9) 100%)",
+                        : getRoomBackground(room.type, isHovered, isOpenArea),
                     boxShadow: isHovered
                       ? "0 0 30px rgba(151, 254, 237, 0.5)"
                       : "0 6px 20px rgba(0,0,0,0.3)",
@@ -332,13 +303,8 @@ export default function FloorPlan2D({
                     overflow: "hidden",
                   }}
                 >
-                  <div
-                    style={{
-                      textAlign: "center",
-                      color: isHovered ? "#97FEED" : "#fff",
-                      textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                    }}
-                  >
+                  <div style={{ textAlign: "center", color: isHovered ? "#97FEED" : "#fff", textShadow: "0 2px 4px rgba(0,0,0,0.3)" }}>
+                    {/* Room name */}
                     <div
                       style={{
                         fontWeight: 700,
@@ -359,7 +325,8 @@ export default function FloorPlan2D({
                       {room.name || "UNNAMED"}
                     </div>
 
-                    {!isStairs && !isOpenArea && !isFree && stats[room.id] && (
+                    {/* Sensor readings */}
+                    {hasData && (
                       <div
                         style={{
                           fontSize: isMobileView
@@ -367,77 +334,68 @@ export default function FloorPlan2D({
                             : `clamp(9px, ${room.width * SCALE * 0.1}px, 13px)`,
                           marginTop: isMobileView ? 1 : 6,
                           fontWeight: 600,
-                          opacity: isHovered ? 1 : 0.8,
+                          opacity: isHovered ? 1 : 0.85,
                           display: room.height * SCALE < 35 ? "none" : "block",
                           textShadow: "0 1px 2px rgba(0,0,0,0.8)",
                         }}
                       >
-                        <div
-                          style={{
-                            color:
-                              stats[room.id].temp > 30 ? "#FF4B2B" : "#97FEED",
-                          }}
-                        >
-                          {stats[room.id].temp.toFixed(1)}°C
-                        </div>
-                        <div
-                          style={{
-                            color:
-                              stats[room.id].occ > 70 ? "#F5A623" : "#97FEED",
-                          }}
-                        >
-                          {Math.round(stats[room.id].occ)}%
-                        </div>
+                        {roomStats.temp !== null && (
+                          <div style={{ color: roomStats.temp > 30 ? "#FF4B2B" : "#97FEED" }}>
+                            {roomStats.temp.toFixed(1)}°C
+                          </div>
+                        )}
+                        {roomStats.occ !== null && (
+                          <div style={{ color: roomStats.occ > 100 ? "#F5A623" : "#97FEED" }}>
+                            {Math.round(roomStats.occ)} ppl
+                          </div>
+                        )}
+                        {roomStats.anomaly && (
+                          <div
+                            style={{
+                              color: "#FF4B2B",
+                              fontWeight: 800,
+                              marginTop: 2,
+                              textShadow: "0 0 6px rgba(255,75,43,0.8)",
+                              display: room.height * SCALE < 60 ? "none" : "block",
+                            }}
+                          >
+                            ⚠ ANOMALY
+                          </div>
+                        )}
                       </div>
                     )}
 
+                    {/* No live data yet */}
+                    {!isStairs && !isFree && !isOpenArea && !roomStats && room.width * SCALE > 40 && room.height * SCALE > 35 && (
+                      <div style={{ fontSize: `clamp(8px, ${room.width * SCALE * 0.08}px, 11px)`, opacity: 0.45, marginTop: 4 }}>
+                        --
+                      </div>
+                    )}
+
+                    {/* Stairs navigation buttons */}
                     {isStairs && (
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: isMobileView ? "4px" : "8px",
-                          marginTop: isMobileView ? "4px" : "10px",
-                        }}
-                      >
+                      <div style={{ display: "flex", gap: isMobileView ? "4px" : "8px", marginTop: isMobileView ? "4px" : "10px" }}>
                         {floorNumber < maxFloor && (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              goUp();
-                            }}
+                            onClick={(e) => { e.stopPropagation(); goUp(); }}
                             style={{
                               padding: isMobileView ? "6px 10px" : "6px 12px",
-                              cursor: "pointer",
-                              borderRadius: "4px",
-                              border: "none",
-                              background: "#071952",
-                              color: "#97FEED",
-                              fontWeight: "bold",
-                              fontSize: isMobileView ? 9 : 10,
+                              cursor: "pointer", borderRadius: "4px", border: "none",
+                              background: "#071952", color: "#97FEED",
+                              fontWeight: "bold", fontSize: isMobileView ? 9 : 10,
                             }}
-                          >
-                            UP
-                          </button>
+                          >UP</button>
                         )}
                         {floorNumber > minFloor && (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              goDown();
-                            }}
+                            onClick={(e) => { e.stopPropagation(); goDown(); }}
                             style={{
                               padding: isMobileView ? "6px 10px" : "6px 12px",
-                              cursor: "pointer",
-                              borderRadius: "4px",
-                              border: "none",
-                              background: "#071952",
-                              color: "#97FEED",
-                              fontWeight: "bold",
-                              fontSize: isMobileView ? 9 : 10,
+                              cursor: "pointer", borderRadius: "4px", border: "none",
+                              background: "#071952", color: "#97FEED",
+                              fontWeight: "bold", fontSize: isMobileView ? 9 : 10,
                             }}
-                          >
-                            DN
-                          </button>
+                          >DN</button>
                         )}
                       </div>
                     )}
