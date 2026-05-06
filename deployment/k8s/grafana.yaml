@@ -25,6 +25,8 @@ spec:
       labels:
         app: grafana
     spec:
+      securityContext:
+        fsGroup: 472
       initContainers:
         - name: grafana-init
           image: busybox:1.36
@@ -41,7 +43,6 @@ spec:
           securityContext:
             runAsUser: 472
             runAsGroup: 472
-            fsGroup: 472
           ports:
             - containerPort: 3000
           envFrom:
@@ -65,10 +66,25 @@ spec:
           volumeMounts:
             - name: grafana-data
               mountPath: /var/lib/grafana
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboards-prov
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboards-json
+              mountPath: /var/lib/grafana/dashboards
       volumes:
         - name: grafana-data
           persistentVolumeClaim:
             claimName: grafana-data
+        - name: datasources
+          configMap:
+            name: grafana-datasources-config
+        - name: dashboards-prov
+          configMap:
+            name: grafana-dashboards-config
+        - name: dashboards-json
+          configMap:
+            name: grafana-dashboards-json
 ---
 apiVersion: v1
 kind: Service

@@ -22,6 +22,7 @@ resources:
   - frontend.yaml
   - grafana.yaml
   - kong.yaml
+  - prometheus.yaml
 
 images:
   - name: campus-api
@@ -39,3 +40,25 @@ images:
   - name: campus-ml-inference
     newName: ghcr.io/smart-campus-digital-twin/campus-ml-inference
     newTag: v3
+
+configMapGenerator:
+  - name: keycloak-realm-config
+    files:
+      - infra/keycloak/realm-campus.json
+  - name: grafana-dashboards-config
+    files:
+      - infra/grafana/provisioning/dashboards/dashboards.yaml
+  - name: grafana-datasources-config
+    files:
+      - infra/grafana/provisioning/datasources/influxdb.yaml
+      - infra/grafana/provisioning/datasources/postgresql.yaml
+      - infra/grafana/provisioning/datasources/prometheus.yaml
+  - name: grafana-dashboards-json
+    files:
+      - infra/grafana/dashboards/campus_overview.json
+  - name: prometheus-config
+    files:
+      - infra/prometheus/prometheus.yml
+  - name: influxdb-init-scripts
+    files:
+      - init-buckets.sh=infra/influxdb/init-buckets.sh

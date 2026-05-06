@@ -25,6 +25,32 @@ spec:
       labels:
         app: mosquitto
     spec:
+      initContainers:
+        - name: generate-passwd
+          image: eclipse-mosquitto:2
+          command:
+            - sh
+            - -c
+            - |
+              cp /tmp/config/mosquitto.conf /mosquitto/config/mosquitto.conf
+              mosquitto_passwd -c -b /mosquitto/config/passwd "$MQTT_USERNAME" "$MQTT_PASSWORD"
+              chown -R 1883:1883 /mosquitto/config
+          env:
+            - name: MQTT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: campus-mqtt
+                  key: MQTT_USERNAME
+            - name: MQTT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: campus-mqtt
+                  key: MQTT_PASSWORD
+          volumeMounts:
+            - name: config-dir
+              mountPath: /mosquitto/config
+            - name: config-map
+              mountPath: /tmp/config
       containers:
         - name: mosquitto
           image: eclipse-mosquitto:2
@@ -36,9 +62,8 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /mosquitto/data
-            - name: config
-              mountPath: /mosquitto/config/mosquitto.conf
-              subPath: mosquitto.conf
+            - name: config-dir
+              mountPath: /mosquitto/config
           resources:
             requests:
               memory: 32Mi
@@ -55,7 +80,9 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: mosquitto-data
-        - name: config
+        - name: config-dir
+          emptyDir: {}
+        - name: config-map
           configMap:
             name: mosquitto-config
 ---

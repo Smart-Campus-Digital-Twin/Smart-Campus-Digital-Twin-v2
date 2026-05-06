@@ -30,7 +30,7 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              pip install psycopg2-binary -q &&
+              pip install --quiet psycopg2-binary &&
               mlflow server --host=0.0.0.0 --port=5000 \
                 --backend-store-uri=postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/mlflow \
                 --default-artifact-root=/mlflow/artifacts
@@ -47,7 +47,7 @@ spec:
               memory: 128Mi
               cpu: 100m
             limits:
-              memory: 256Mi
+              memory: 512Mi
               cpu: 200m
           readinessProbe:
             httpGet:

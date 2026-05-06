@@ -33,12 +33,18 @@ spec:
           envFrom:
             - secretRef:
                 name: campus-postgres
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
             - name: init-sql
               mountPath: /docker-entrypoint-initdb.d/01_schema.sql
               subPath: init.sql
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d/02_create_dbs.sh
+              subPath: create-dbs.sh
           resources:
             requests:
               memory: 128Mi

@@ -43,9 +43,22 @@ spec:
                 echo "Waiting for Mosquitto MQTT broker..."; sleep 5
               done
               echo "Mosquitto ready."
+        - name: download-connector
+          image: alpine:3.19
+          command:
+            - sh
+            - -c
+            - |
+              apk add --no-cache curl unzip
+              mkdir -p /opt/connectors/mqtt
+              curl -L https://github.com/lensesio/stream-reactor/releases/download/11.7.2/kafka-connect-mqtt-11.7.2.zip -o /tmp/mqtt.zip
+              unzip /tmp/mqtt.zip -d /opt/connectors/mqtt
+          volumeMounts:
+            - name: connectors
+              mountPath: /opt/connectors
       containers:
         - name: kafka-connect
-          image: lensesio/kafka-connect:latest
+          image: confluentinc/cp-kafka-connect:7.6.1
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8083
@@ -77,6 +90,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: CONNECT_PLUGIN_PATH
+              value: "/usr/share/java,/usr/share/confluent-hub-components,/opt/connectors"
             - name: MQTT_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -87,26 +102,32 @@ spec:
                 secretKeyRef:
                   name: campus-mqtt
                   key: MQTT_PASSWORD
+          volumeMounts:
+            - name: connectors
+              mountPath: /opt/connectors
           resources:
             requests:
-              memory: 512Mi
+              memory: 2Gi
               cpu: 200m
             limits:
-              memory: 1Gi
-              cpu: 500m
+              memory: 2Gi
+              cpu: 1000m
           readinessProbe:
             httpGet:
               path: /connectors
               port: 8083
-            initialDelaySeconds: 60
+            initialDelaySeconds: 240
             periodSeconds: 15
             failureThreshold: 10
           livenessProbe:
             httpGet:
               path: /connectors
               port: 8083
-            initialDelaySeconds: 90
+            initialDelaySeconds: 240
             periodSeconds: 30
+      volumes:
+        - name: connectors
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
