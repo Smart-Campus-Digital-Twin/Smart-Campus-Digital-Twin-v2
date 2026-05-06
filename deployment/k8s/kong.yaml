@@ -104,7 +104,7 @@ spec:
             - sh
             - -c
             - |
-              until curl -sf http://keycloak:8080/health/ready; do
+              until curl -sf http://keycloak:8083/realms/master > /dev/null 2>&1; do
                 echo "Waiting for Keycloak..."; sleep 5
               done
         - name: wait-api
