@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: bridge
-          image: ghcr.io/smart-campus-digital-twin/campus-bridge:deployment
+          image: campus-bridge:latest
           imagePullPolicy: Always
           envFrom:
             - configMapRef:
@@ -24,8 +24,8 @@ spec:
                 name: campus-mqtt
           resources:
             requests:
+              memory: 64Mi
+              cpu: 50m
+            limits:
               memory: 128Mi
               cpu: 100m
-            limits:
-              memory: 256Mi
-              cpu: 500m
