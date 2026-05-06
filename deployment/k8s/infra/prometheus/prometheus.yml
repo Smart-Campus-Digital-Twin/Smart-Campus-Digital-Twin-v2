@@ -11,20 +11,25 @@ scrape_configs:
     static_configs:
       - targets: [localhost:9090]
 
-  # ── Flink JobManager + TaskManager ─────────────────────────────────────────
-  # Prometheus reporter exposes metrics on port 9249 (configured in FLINK_PROPERTIES)
-  - job_name: flink
-    static_configs:
-      - targets:
-          - flink-jobmanager:9249
-          - flink-taskmanager:9249
+  # ── Node exporter — host OS metrics (CPU, mem, disk, network) ──────────────
+  - job_name: node
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [campus]
     relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: node-exporter
       - source_labels: [__address__]
-        regex: '([^:]+):.+'
-        target_label: instance
+        action: replace
+        regex: (.+)
+        replacement: ${1}:9100
+        target_label: __address__
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: node
 
   # ── InfluxDB ─────────────────────────────────────────────────────────────────
-  # InfluxDB 2.x exposes Prometheus-format metrics natively at /metrics
   - job_name: influxdb
     metrics_path: /metrics
     static_configs:
@@ -41,9 +46,7 @@ scrape_configs:
       - targets: [postgres-exporter:9187]
 
   # ── FastAPI backend ─────────────────────────────────────────────────────────
-  # FastAPI exposes /metrics via prometheus-fastapi-instrumentator if installed;
-  # Flink bridge metrics are scraped separately on port 9090.
-  - job_name: bridge
+  - job_name: api
     static_configs:
-      - targets: [bridge:9090]
+      - targets: [api:8000]
     metrics_path: /metrics

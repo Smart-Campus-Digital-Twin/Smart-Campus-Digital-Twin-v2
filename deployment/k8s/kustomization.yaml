@@ -23,6 +23,7 @@ resources:
   - grafana.yaml
   - kong.yaml
   - prometheus.yaml
+  - node-exporter.yaml
 
 images:
   - name: campus-api
@@ -62,3 +63,14 @@ configMapGenerator:
   - name: influxdb-init-scripts
     files:
       - init-buckets.sh=infra/influxdb/init-buckets.sh
+  - name: kong-template
+    files:
+      - kong.yml=infra/kong/kong.template.yml
+    options:
+      disableNameSuffixHash: true
+  - name: kong-render-scripts
+    files:
+      - render_kong_config.py=infra/kong/render_kong_config.py
+      - get_issuer.py=infra/kong/get_issuer.py
+    options:
+      disableNameSuffixHash: true

@@ -1,3 +1,36 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: campus
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: campus-prometheus
+rules:
+  - apiGroups: [""]
+    resources: [nodes, nodes/proxy, services, endpoints, pods]
+    verbs: [get, list, watch]
+  - apiGroups: [extensions, networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list, watch]
+  - nonResourceURLs: [/metrics]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: campus-prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: campus-prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: campus
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,6 +48,7 @@ spec:
       labels:
         app: prometheus
     spec:
+      serviceAccountName: prometheus
       securityContext:
         fsGroup: 65534
       containers:
@@ -26,6 +60,13 @@ spec:
             - "--web.enable-lifecycle"
           ports:
             - containerPort: 9090
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+              cpu: 500m
           volumeMounts:
             - name: prometheus-config
               mountPath: /etc/prometheus/prometheus.yml

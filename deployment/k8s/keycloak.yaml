@@ -27,6 +27,10 @@ spec:
           env:
             - name: KC_DB_URL
               value: jdbc:postgresql://postgres:5432/keycloak
+            - name: KC_HOSTNAME_URL
+              value: "http://167.172.5.124:8083"
+            - name: KC_HOSTNAME_ADMIN_URL
+              value: "http://167.172.5.124:8083"
           resources:
             requests:
               memory: 256Mi
