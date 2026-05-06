@@ -11,12 +11,13 @@ resources:
   - redis.yaml
   - kafka.yaml
   - kafka-init.yaml
+  - kafka-connect.yaml
   - influxdb.yaml
   - mosquitto.yaml
   - keycloak.yaml
   - mlflow.yaml
+  - ml-consumer.yaml
   - api.yaml
-  - bridge.yaml
   - simulator.yaml
   - frontend.yaml
   - grafana.yaml
@@ -25,19 +26,16 @@ resources:
 images:
   - name: campus-api
     newName: ghcr.io/smart-campus-digital-twin/campus-api
-    newTag: Deployment
-  - name: campus-bridge
-    newName: ghcr.io/smart-campus-digital-twin/campus-bridge
-    newTag: Deployment
+    newTag: v3
   - name: campus-simulator
     newName: ghcr.io/smart-campus-digital-twin/campus-simulator
-    newTag: Deployment
+    newTag: v3
   - name: campus-frontend
     newName: ghcr.io/smart-campus-digital-twin/campus-frontend
-    newTag: Deployment
-  - name: campus-ml-training
-    newName: ghcr.io/smart-campus-digital-twin/campus-ml-training
-    newTag: Deployment
+    newTag: v3
+  - name: campus-ml-consumer
+    newName: ghcr.io/smart-campus-digital-twin/campus-ml-consumer
+    newTag: v3
   - name: campus-ml-inference
     newName: ghcr.io/smart-campus-digital-twin/campus-ml-inference
-    newTag: Deployment
+    newTag: v3

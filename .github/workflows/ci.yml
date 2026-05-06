@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, v3]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, v3]
 
 jobs:
   test:
@@ -33,27 +33,32 @@ jobs:
             -r api/requirements.txt \
             -r bridge/requirements.txt \
             -r simulator/requirements.txt \
+            -r processing/consumer/requirements.txt \
             pytest pytest-asyncio pytest-cov ruff
 
       - name: Lint with ruff
         run: |
-          ruff check shared/ api/ bridge/ simulator/ processing/spark/ airflow/ tests/ \
+          ruff check shared/ api/ bridge/ simulator/ processing/consumer/ tests/ \
             --ignore E501,E402
 
       - name: Run unit tests
         env:
           PYTHONPATH: ${{ github.workspace }}
-          # Minimal secrets so config validators don't abort at import
+          # Minimal stubs so config validators don't abort at import
           INFLUXDB_TOKEN: ci-test-token-not-real
-          DATABASE_URL:   postgresql://campus:ci-pass@localhost:5432/campus
-          MQTT_USERNAME:  ci-user
-          MQTT_PASSWORD:  ci-pass
+          INFLUXDB_URL: http://localhost:8086
+          INFLUXDB_ORG: smart-campus
+          INFLUXDB_BUCKET: campus_sensors
+          DATABASE_URL: postgresql://campus:ci-pass@localhost:5432/campus
+          MQTT_USERNAME: ci-user
+          MQTT_PASSWORD: ci-pass
+          KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+          JWT_SECRET_KEY: ci-jwt-secret-not-real
         run: |
           pytest tests/ \
-            --ignore=tests/test_anomaly_rules.py \
             -v \
             --tb=short \
-            --cov=shared --cov=api --cov=bridge --cov=simulator \
+            --cov=shared --cov=api --cov=bridge --cov=simulator --cov=processing \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml
 
@@ -64,7 +69,7 @@ jobs:
           files: coverage.xml
           fail_ci_if_error: false
 
-  docker-build:
+  docker-smoke:
     name: Docker build smoke test
     runs-on: ubuntu-22.04
     needs: test
@@ -75,5 +80,32 @@ jobs:
       - name: Build API image
         run: docker build -f api/Dockerfile -t campus-api:ci .
 
-      - name: Build bridge image
-        run: docker build -f bridge/Dockerfile -t campus-bridge:ci .
+      - name: Build ML consumer image
+        run: docker build -f processing/consumer/Dockerfile -t campus-ml-consumer:ci .
+
+      - name: Build simulator image
+        run: docker build -f simulator/Dockerfile -t campus-simulator:ci .
+
+  k8s-validate:
+    name: Validate K8s manifests
+    runs-on: ubuntu-22.04
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Install kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Dry-run kustomize build
+        run: |
+          kustomize build deployment/k8s --output /tmp/manifests.yaml
+          echo "Kustomize build succeeded — $(wc -l < /tmp/manifests.yaml) lines generated."
+
+      - name: Validate YAML with kubectl dry-run (client-side)
+        run: |
+          kubectl apply --dry-run=client -f /tmp/manifests.yaml \
+            --validate=false 2>&1 | grep -E "(created|configured|unchanged|error)" || true

@@ -4,7 +4,7 @@ on:
   push:
     branches-ignore: [master, main]
   pull_request:
-    branches: [master, main]
+    branches: [master, main, v3]
   workflow_dispatch:
 
 env:
@@ -29,39 +29,20 @@ jobs:
             campus-api:
               - 'api/**'
               - 'shared/**'
-            campus-bridge:
-              - 'bridge/**'
-              - 'shared/**'
             campus-simulator:
               - 'simulator/**'
               - 'shared/**'
             campus-frontend:
               - 'infra/frontend/Dockerfile'
               - 'frontend/**'
-            campus-spark:
-              - 'infra/spark/Dockerfile'
-              - 'processing/spark/**'
-              - 'shared/**'
-            campus-flink:
-              - 'processing/flink/Dockerfile'
-              - 'processing/flink/**'
-              - 'shared/**'
-            campus-flink-submit:
-              - 'processing/flink/Dockerfile'
-              - 'processing/flink/**'
-              - 'shared/**'
-            campus-ml-training:
-              - 'ml/Dockerfile'
-              - 'ml/**'
+            campus-ml-consumer:
+              - 'processing/consumer/**'
               - 'shared/**'
             campus-ml-inference:
               - 'ml/Dockerfile'
-              - 'ml/**'
+              - 'ml/inference/**'
+              - 'ml/prediction_service/**'
               - 'shared/**'
-            campus-airflow:
-              - 'airflow/Dockerfile'
-              - 'airflow/**'
-              - 'infra/spark/Dockerfile'
 
       - name: Build filtered matrix
         id: set-matrix
@@ -69,7 +50,13 @@ jobs:
           CHANGES: ${{ steps.filter.outputs.changes }}
           EVENT:   ${{ github.event_name }}
         run: |
-          ALL='[{"service":"campus-api","dockerfile":"api/Dockerfile","context":"."},{"service":"campus-bridge","dockerfile":"bridge/Dockerfile","context":"."},{"service":"campus-simulator","dockerfile":"simulator/Dockerfile","context":"."},{"service":"campus-frontend","dockerfile":"infra/frontend/Dockerfile","context":"."},{"service":"campus-spark","dockerfile":"infra/spark/Dockerfile","context":".","target":"cluster"},{"service":"campus-flink","dockerfile":"processing/flink/Dockerfile","context":".","target":"cluster"},{"service":"campus-flink-submit","dockerfile":"processing/flink/Dockerfile","context":"."},{"service":"campus-ml-training","dockerfile":"ml/Dockerfile","context":".","target":"training"},{"service":"campus-ml-inference","dockerfile":"ml/Dockerfile","context":".","target":"inference"},{"service":"campus-airflow","dockerfile":"airflow/Dockerfile","context":"."}]'
+          ALL='[
+            {"service":"campus-api","dockerfile":"api/Dockerfile","context":"."},
+            {"service":"campus-simulator","dockerfile":"simulator/Dockerfile","context":"."},
+            {"service":"campus-frontend","dockerfile":"infra/frontend/Dockerfile","context":"."},
+            {"service":"campus-ml-consumer","dockerfile":"processing/consumer/Dockerfile","context":"."},
+            {"service":"campus-ml-inference","dockerfile":"ml/Dockerfile","context":".","target":"inference"}
+          ]'
 
           if [ "$EVENT" = "workflow_dispatch" ]; then
             FILTERED=$(echo "$ALL" | jq -c '.')
@@ -80,7 +67,6 @@ jobs:
 
           ANY=$(echo "$FILTERED" | jq 'length > 0')
 
-          # Heredoc format required for multiline/complex values in GITHUB_OUTPUT
           {
             echo "matrix<<EOF"
             echo "{\"include\":$FILTERED}"
@@ -88,7 +74,7 @@ jobs:
             echo "any-changed=$ANY"
           } >> "$GITHUB_OUTPUT"
 
-  # ── Build + push only the changed images ───────────────────────────────────
+  # ── Build + push only changed images ───────────────────────────────────────
   build-push:
     needs: changes
     if: needs.changes.outputs.any-changed == 'true'
@@ -126,7 +112,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=sha,prefix=sha-,format=short
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/v3' }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
