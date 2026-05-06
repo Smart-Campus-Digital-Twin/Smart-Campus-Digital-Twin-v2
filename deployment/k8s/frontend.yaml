@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/smart-campus-digital-twin/campus-frontend:latest
+          image: ghcr.io/smart-campus-digital-twin/campus-frontend:deployment
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           env:
