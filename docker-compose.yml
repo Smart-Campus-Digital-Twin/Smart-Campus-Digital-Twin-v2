@@ -749,7 +749,7 @@ services:
       context: .
       dockerfile: infra/frontend/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api:8000}
     container_name: campus-frontend
     restart: unless-stopped
     networks: [campus]

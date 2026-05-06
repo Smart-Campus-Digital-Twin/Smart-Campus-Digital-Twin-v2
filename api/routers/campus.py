@@ -62,10 +62,11 @@ class ZoneData(BaseModel):
     id: str
     name: str
     energyKw: float
-    occupancy: int       # occupancy percentage (0-100%)
-    temperatureC: float  # mean across rooms
+    occupancy: int        # occupancy percentage (0-100%)
+    totalOccupancy: int   # raw people count across all rooms
+    temperatureC: float   # mean across rooms
     anomalyCount: int
-    status: str          # "normal" | "busy" | "critical"
+    status: str           # "normal" | "busy" | "critical"
 
 
 class RoomData(BaseModel):
@@ -111,14 +112,10 @@ _DEFAULT: dict[str, float] = {
     "energy":      0.0,
 }
 
-_ANOMALY_CRITICAL_THRESHOLD = 3
-_ANOMALY_BUSY_THRESHOLD     = 1
-
-
-def _derive_status(total_occ: float, avg_temp: float, anomaly_count: int) -> str:
-    if anomaly_count >= _ANOMALY_CRITICAL_THRESHOLD or total_occ > 300 or avg_temp > 34:
+def _derive_status(occupancy_pct: float, avg_temp: float) -> str:
+    if avg_temp > 34 or occupancy_pct > 85:
         return "critical"
-    if anomaly_count >= _ANOMALY_BUSY_THRESHOLD or total_occ > 150 or avg_temp > 31:
+    if avg_temp > 31 or occupancy_pct > 70:
         return "busy"
     return "normal"
 
@@ -222,9 +219,10 @@ async def campus_zones(
             name=zone_name,
             temperatureC=avg_temp,
             occupancy=occupancy_pct,
+            totalOccupancy=int(total_occ_count),
             energyKw=energy_kw,
             anomalyCount=anom_cnt,
-            status=_derive_status(occupancy_pct, avg_temp, anom_cnt),
+            status=_derive_status(occupancy_pct, avg_temp),
         ))
 
     # Cache for 5 seconds

@@ -21,5 +21,7 @@ export function updateZone(zone: Zone): Zone {
     occupancy: Math.round(o),
     temperatureC: +t.toFixed(1),
     status: deriveStatus(o, t),
+    totalOccupancy: zone.totalOccupancy,
+    anomalyCount: zone.anomalyCount,
   };
 }

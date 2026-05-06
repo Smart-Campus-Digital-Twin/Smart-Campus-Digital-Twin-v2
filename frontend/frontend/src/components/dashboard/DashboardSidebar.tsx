@@ -152,11 +152,6 @@ export default function DashboardSidebar({
 
           const isExpanded = expandedCategories.includes(category);
 
-          const criticalZonesCount = zonesInCategory.reduce(
-            (count, z) => (z.status === "critical" ? count + 1 : count),
-            0,
-          );
-
           return (
             <div
               key={category}
@@ -186,22 +181,6 @@ export default function DashboardSidebar({
                   <ChevronRight size={12} />
                 )}
                 {category} ({zonesInCategory.length})
-                {criticalZonesCount > 0 && (
-                  <span
-                    style={{
-                      marginLeft: "auto",
-                      background: "#f50707",
-                      color: "#fff",
-                      fontSize: 8,
-                      fontWeight: 800,
-                      padding: "1px 5px",
-                      borderRadius: 4,
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    {criticalZonesCount} CRITICAL
-                  </span>
-                )}
               </button>
 
               {isExpanded && (
@@ -331,9 +310,9 @@ export default function DashboardSidebar({
               selectedZone.status.toUpperCase(),
               STATUS_COLORS[selectedZone.status],
             ],
-            ["Avg. Energy",    `${animatedEnergy.toFixed(1)} kW`,    "#97FEED"],
-            ["Avg. Occupancy", `${animatedOccupancy}%`,               "#97FEED"],
-            ["Avg. Temp",      `${animatedTemp.toFixed(1)}°C`,        "#97FEED"],
+            ["Total Energy",  `${animatedEnergy.toFixed(1)} kW`,          "#97FEED"],
+            ["Occupancy",     `${selectedZone.totalOccupancy} ppl`,        "#97FEED"],
+            ["Avg. Temp",     `${animatedTemp.toFixed(1)}°C`,              "#97FEED"],
           ].map(([label, value, color], i) => (
             <div
               key={i}

@@ -5,8 +5,10 @@ export type Zone = {
   name: string;
   energyKw: number;
   occupancy: number;
+  totalOccupancy: number;
   temperatureC: number;
   status: ZoneStatus;
+  anomalyCount: number;
 };
 
 export type ZoneLayout = {
@@ -307,8 +309,10 @@ export const STABLE_INITIAL_ZONES: Zone[] = CAMPUS_LAYOUT.map((layout) => ({
   name: layout.name,
   energyKw: 50,
   occupancy: 50,
+  totalOccupancy: 0,
   temperatureC: 28.0,
   status: "normal",
+  anomalyCount: 0,
 }));
 
 export const generateInitialZones = (): Zone[] => {
@@ -328,6 +332,8 @@ export const generateInitialZones = (): Zone[] => {
       occupancy,
       temperatureC: parseFloat(temperatureC.toFixed(1)),
       status,
+      totalOccupancy: 0,
+      anomalyCount: 0,
     };
   });
 };
