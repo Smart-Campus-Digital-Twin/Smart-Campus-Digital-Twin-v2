@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    argocd.argoproj.io/tracking-id: smart-campus:apps/StatefulSet:campus/influxdb
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"StatefulSet","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"smart-campus:apps/StatefulSet:campus/influxdb"},"name":"influxdb","namespace":"campus"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"influxdb"}},"serviceName":"influxdb","template":{"metadata":{"labels":{"app":"influxdb"}},"spec":{"containers":[{"env":[{"name":"DOCKER_INFLUXDB_INIT_MODE","value":"setup"},{"name":"DOCKER_INFLUXDB_INIT_ORG","value":"smart-campus"},{"name":"DOCKER_INFLUXDB_INIT_BUCKET","value":"campus_sensors"}],"envFrom":[{"secretRef":{"name":"campus-influxdb"}}],"image":"influxdb:2.7","livenessProbe":{"httpGet":{"path":"/health","port":8086},"initialDelaySeconds":40,"periodSeconds":15},"name":"influxdb","ports":[{"containerPort":8086}],"readinessProbe":{"httpGet":{"path":"/health","port":8086},"initialDelaySeconds":20,"periodSeconds":10},"resources":{"limits":{"cpu":"400m","memory":"512Mi"},"requests":{"cpu":"150m","memory":"256Mi"}},"volumeMounts":[{"mountPath":"/var/lib/influxdb2","name":"data"}]}],"volumes":[{"name":"data","persistentVolumeClaim":{"claimName":"influxdb-data"}}]}}}}
+  creationTimestamp: "2026-05-05T21:06:34Z"
+  generation: 1
+  name: influxdb
+  namespace: campus
+  resourceVersion: "24709"
+  uid: 53008bce-844f-41e9-a4dc-9cff672363d8
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: influxdb
+  serviceName: influxdb
+  template:
+    metadata:
+      labels:
+        app: influxdb
+    spec:
+      containers:
+      - env:
+        - name: DOCKER_INFLUXDB_INIT_MODE
+          value: setup
+        - name: DOCKER_INFLUXDB_INIT_ORG
+          value: smart-campus
+        - name: DOCKER_INFLUXDB_INIT_BUCKET
+          value: campus_sensors
+        envFrom:
+        - secretRef:
+            name: campus-influxdb
+        image: influxdb:2.7
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 8086
+            scheme: HTTP
+          initialDelaySeconds: 40
+          periodSeconds: 15
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: influxdb
+        ports:
+        - containerPort: 8086
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 8086
+            scheme: HTTP
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: 400m
+            memory: 512Mi
+          requests:
+            cpu: 150m
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/lib/influxdb2
+          name: data
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: influxdb-data
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+      partition: 0
+    type: RollingUpdate
+status:
+  availableReplicas: 1
+  collisionCount: 0
+  currentReplicas: 1
+  currentRevision: influxdb-8cdf6c88d
+  observedGeneration: 1
+  readyReplicas: 1
+  replicas: 1
+  updateRevision: influxdb-8cdf6c88d
+  updatedReplicas: 1
