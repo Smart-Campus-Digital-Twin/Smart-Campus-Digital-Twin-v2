@@ -12,6 +12,7 @@ resources:
   - kafka.yaml
   - kafka-init.yaml
   - kafka-connect.yaml
+  - bridge.yaml
   - influxdb.yaml
   - mosquitto.yaml
   - keycloak.yaml
