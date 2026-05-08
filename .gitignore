@@ -83,6 +83,7 @@ docker-compose.override.yml
 # Generated documentation
 ARCHITECTURE_COMPREHENSIVE.md
 local/
+!local/apply-secrets.sh
 
 # Node / frontend
 node_modules/
