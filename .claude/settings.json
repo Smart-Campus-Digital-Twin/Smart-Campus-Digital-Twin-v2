@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(kubectl exec -n campus kafka-0 -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic sensors.temperature --from-beginning --max-messages 5 --timeout-ms 20000 2>&1)",
+      "PowerShell(kubectl exec -n campus -l app=kafka-connect -- /bin/sh -c \"ls /opt/connectors/mqtt/ 2>&1 | head -30\")",
+      "Bash(kubectl get *)",
+      "Bash(kubectl logs *)",
+      "PowerShell(kubectl exec -n campus kafka-0 -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic sensors.temperature --from-beginning --max-messages 3 --timeout-ms 15000 2>&1)",
+      "Bash(xargs grep -l \"status\\\\|health\\\\|bridge\")",
+      "Bash(xargs grep -l \"ServiceStatus\\\\|ComponentStatus\\\\|InfrastructureStatus\\\\|StatusComponent\\\\|StatusPage\")",
+      "Bash(find \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\" -type d \\\\\\( -name \"frontend\" -o -name \"web\" \\\\\\) 2>nul | head -20)",
+      "Bash(grep -r \"bridge\\\\|kafka\\\\|missing\" \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\\\\frontend\" 2>nul | head -50)",
+      "Bash(find \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\" -type d -name \"web\" 2>nul)",
+      "Bash(xargs grep -l \"status\\\\|health\\\\|api\\\\|fetch\")",
+      "Bash(xargs grep -l \"service\\\\|status\\\\|health\")",
+      "Bash(grep -r \"NEXT_PUBLIC\\\\|fetch\\\\|axios\\\\|api\\\\|service\" \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\\\\frontend\\\\frontend\\\\src\" 2>nul | grep -i \"bridge\\\\|kafka\\\\|missing\" | head -20)",
+      "Bash(xargs grep -l \"bridge\\\\|kafka\\\\|missing\")",
+      "Bash(find \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\" -type f \\\\\\( -name \"*.md\" -o -name \"*.txt\" -o -name \"*.json\" \\\\\\) ! -path \"*/node_modules/*\" ! -path \"*/.git/*\" 2>nul | head -30)",
+      "Bash(grep -r \"missing.*kafka\\\\|kafka.*bridge\\\\|missing.*bridge\" \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\" 2>nul | head -20)",
+      "Bash(grep -r \"missing\\\\|bridge\\\\|kafka\" \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\\\\api\" 2>nul | grep -i \"missing\" | head -20)",
+      "Bash(grep -n \"missing\\\\|status\\\\|health\" \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\\\\bridge\\\\*.py\" 2>nul)",
+      "Bash(grep -r \"missing\" \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\\\\bridge\" 2>nul | head -20)",
+      "Bash(grep -r \"HealthResponse\" \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\\\\api\" 2>nul)",
+      "Bash(grep -r \"/health\\\\|healthcheck\\\\|bridge.*status\\\\|status.*bridge\" \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\\\\frontend\" 2>nul)",
+      "Bash(grep -ri \"TODO\\\\|FIXME\\\\|XXX\\\\|HACK\" \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\\\\frontend\\\\frontend\\\\src\" 2>nul | grep -i \"bridge\\\\|kafka\\\\|missing\\\\|status\" | head -20)",
+      "Bash(grep -r \"missing.*kafka\\\\|kafka.*bridge\" \"D:\\\\SE Project\\\\Smart-Campus-Digital-Twin-v2\" --include=\"*.json\" --include=\"*.py\" --include=\"*.tsx\" --include=\"*.ts\" 2>nul | head -20)"
+    ],
+    "additionalDirectories": [
+      "D:\\SE Project\\Smart-Campus-Digital-Twin-v2"
+    ]
+  }
+}

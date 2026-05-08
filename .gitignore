@@ -2,6 +2,7 @@
 venv/
 ENV/
 .venv
+architecture_diagram.html
 
 # Secret env files — only *.env.example files are committed
 env/*.env
@@ -82,3 +83,41 @@ docker-compose.override.yml
 # Generated documentation
 ARCHITECTURE_COMPREHENSIVE.md
 local/
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor backups and project files
+*.sublime-workspace
+*.sublime-project
+*.iml
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+
+# Containers and archives
+*.tar
+
+# Secrets and keys
+secrets.env
+*.pem
+*.key
+*.p12
+
+# Local kubernetes/kubeconfig
+.kube/
+.kubeconfig
+
+# Misc
+*.sqlite3
+*.db
+

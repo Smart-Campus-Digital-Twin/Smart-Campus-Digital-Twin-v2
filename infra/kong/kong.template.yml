@@ -10,8 +10,16 @@ services:
     routes:
       - name: api-all
         paths:
-          - "/"
-        strip_path: false
+          - "/api"
+        strip_path: true
+
+  - name: keycloak-svc
+    url: http://keycloak:8083
+    routes:
+      - name: keycloak-auth
+        paths:
+          - "/auth"
+        strip_path: true
 
   - name: grafana-svc
     url: http://grafana:3000
@@ -20,6 +28,14 @@ services:
         paths:
           - "/grafana"
         strip_path: true
+
+  - name: campus-frontend
+    url: http://frontend:80
+    routes:
+      - name: frontend-root
+        paths:
+          - "/"
+        strip_path: false
 
   - name: flink-ui
     url: http://flink-jobmanager:8081

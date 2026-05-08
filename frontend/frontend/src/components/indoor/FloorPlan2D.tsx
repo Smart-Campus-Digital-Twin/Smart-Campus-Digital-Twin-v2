@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Floor } from "./FloorData";
+import { useAuth } from "@/components/auth/KeycloakProvider";
 
 type Props = {
   buildingId?: string;
@@ -29,7 +30,23 @@ export default function FloorPlan2D({
   goDown,
   isMobile = false,
 }: Props) {
-  const [stats, setStats] = useState<Record<string, RoomStats>>({});
+  const { fetchWithAuth, isReady, isAuthenticated } = useAuth();
+  const createInitialStats = () => {
+    const initialStats: Record<string, RoomStats> = {};
+
+    floor.rooms.forEach((room) => {
+      if (room.type !== "stairs" && room.type !== "free") {
+        initialStats[room.id] = {
+          temp: 24 + Math.random() * 6,
+          occ: 20 + Math.random() * 60,
+        };
+      }
+    });
+
+    return initialStats;
+  };
+
+  const [stats, setStats] = useState<Record<string, RoomStats>>(() => createInitialStats());
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
   const [isMobileView, setIsMobileView] = useState(isMobile);
   const [dynamicScale, setDynamicScale] = useState(isMobile ? 0.4 : 1.25);
@@ -81,18 +98,29 @@ export default function FloorPlan2D({
   const planWidth = (bounds.maxX - bounds.minX) * SCALE;
   const planHeight = (bounds.maxY - bounds.minY) * SCALE;
 
+  type RoomRow = {
+    room_id: string;
+    floor: number;
+    temperature: number;
+    occupancy: number;
+  };
+
   useEffect(() => {
+    if (!isReady || !isAuthenticated) {
+      return;
+    }
+
     const fetchRoomData = async () => {
       // If we don't have a buildingId, we generate initial stats and don't poll
       if (!buildingId) return;
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api";
         // /campus is the public prefix
-        const res = await fetch(`${apiUrl}/campus/buildings/${buildingId}/rooms`);
+        const res = await fetchWithAuth(`${apiUrl}/campus/buildings/${buildingId}/rooms`);
         if (res.ok) {
           const data = await res.json();
           const newStats: Record<string, RoomStats> = {};
-          data.forEach((room: any) => {
+          data.forEach((room: RoomRow) => {
             // Only update stats if it's the current floor
             if (room.floor === floorNumber) {
               newStats[room.room_id] = {
@@ -112,25 +140,13 @@ export default function FloorPlan2D({
       }
     };
 
-    // Generate fallback initial stats just in case API fails or loading takes time
-    const initialStats: Record<string, RoomStats> = {};
-    floor.rooms.forEach((room) => {
-      if (room.type !== "stairs" && room.type !== "free") {
-        initialStats[room.id] = {
-          temp: 24 + Math.random() * 6,
-          occ: 20 + Math.random() * 60,
-        };
-      }
-    });
-    setStats(initialStats);
-    
     fetchRoomData();
 
     // Poll every 3 seconds for room updates
     const timer = setInterval(fetchRoomData, 3000);
 
     return () => clearInterval(timer);
-  }, [floor]);
+  }, [buildingId, fetchWithAuth, floor, floorNumber, isAuthenticated, isReady]);
 
   return (
     <div

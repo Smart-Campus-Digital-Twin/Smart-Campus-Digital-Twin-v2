@@ -101,7 +101,7 @@ class InfluxWriter:
                 bucket=INFLUXDB_BUCKET,
                 org=INFLUXDB_ORG,
                 record=point,
-                precision=WritePrecision.NANOSECONDS,
+                precision=WritePrecision.NS,
             )
         except Exception as exc:
             logger.error(

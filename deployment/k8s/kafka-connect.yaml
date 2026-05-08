@@ -164,17 +164,6 @@ spec:
       containers:
         - name: connector-init
           image: curlimages/curl:8.7.1
-          env:
-            - name: MQTT_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: campus-mqtt
-                  key: MQTT_USERNAME
-            - name: MQTT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: campus-mqtt
-                  key: MQTT_PASSWORD
           command:
             - sh
             - -c
@@ -187,28 +176,15 @@ spec:
                 echo "Waiting for Kafka Connect REST API..."; sleep 10
               done
 
-              echo "Registering MQTT Source connector..."
+              echo "Kafka Connect is ready."
 
-              # Register (or update) the MQTT source connector
-              curl -sf -X PUT "${CONNECT_URL}/connectors/campus-mqtt-source/config" \
-                -H "Content-Type: application/json" \
-                -d "{
-                  \"connector.class\": \"com.datamountaineer.streamreactor.connect.mqtt.source.MqttSourceConnector\",
-                  \"tasks.max\": \"1\",
-                  \"connect.mqtt.hosts\": \"tcp://mosquitto:1883\",
-                  \"connect.mqtt.username\": \"${MQTT_USERNAME}\",
-                  \"connect.mqtt.password\": \"${MQTT_PASSWORD}\",
-                  \"connect.mqtt.service.quality\": \"1\",
-                  \"connect.mqtt.clean\": \"true\",
-                  \"connect.mqtt.client.id\": \"campus-connect-mqtt\",
-                  \"connect.mqtt.kcql\": \"INSERT INTO sensors.temperature SELECT * FROM campus/temperature; INSERT INTO sensors.occupancy SELECT * FROM campus/occupancy; INSERT INTO sensors.energy SELECT * FROM campus/energy\",
-                  \"value.converter\": \"org.apache.kafka.connect.converters.ByteArrayConverter\",
-                  \"key.converter\": \"org.apache.kafka.connect.storage.StringConverter\"
-                }"
+              # Remove stale MQTT connector if present (MQTT→Kafka now handled by bridge pod)
+              if curl -sf "${CONNECT_URL}/connectors/campus-mqtt-source" > /dev/null 2>&1; then
+                echo "Removing stale campus-mqtt-source connector..."
+                curl -sf -X DELETE "${CONNECT_URL}/connectors/campus-mqtt-source" || true
+                echo "Connector removed."
+              else
+                echo "No stale MQTT connector found."
+              fi
 
-              echo "MQTT connector registered successfully."
-
-              # Verify connector is running
-              sleep 5
-              STATUS=$(curl -sf "${CONNECT_URL}/connectors/campus-mqtt-source/status" | grep -o '"state":"[A-Z]*"' | head -1)
-              echo "Connector status: ${STATUS}"
+              echo "Kafka Connect init complete."

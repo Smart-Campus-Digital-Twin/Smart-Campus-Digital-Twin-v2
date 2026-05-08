@@ -22,6 +22,12 @@ spec:
           env:
             - name: NEXT_PUBLIC_API_URL
               value: /api
+            - name: NEXT_PUBLIC_KEYCLOAK_URL
+              value: /auth
+            - name: NEXT_PUBLIC_KEYCLOAK_REALM
+              value: campus
+            - name: NEXT_PUBLIC_KEYCLOAK_CLIENT_ID
+              value: campus-frontend
             - name: NODE_ENV
               value: production
           resources:
@@ -46,7 +52,7 @@ metadata:
 spec:
   selector:
     app: frontend
-  type: LoadBalancer
+  type: ClusterIP
   ports:
     - port: 80
       targetPort: 3000

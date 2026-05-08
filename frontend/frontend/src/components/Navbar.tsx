@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Building2 } from "lucide-react";
+import { Building2, LogIn, LogOut } from "lucide-react";
+import { useAuth } from "@/components/auth/KeycloakProvider";
 
 export default function Navbar() {
+  const { isReady, isAuthenticated, username, login, logout } = useAuth();
+
   return (
     <nav
       style={{
@@ -58,6 +61,45 @@ export default function Navbar() {
           UOM<span style={{ color: "#97FEED" }}>Twin</span>
         </span>
       </Link>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <span
+          style={{
+            padding: "0.4rem 0.75rem",
+            borderRadius: 999,
+            border: "1px solid rgba(151, 254, 237, 0.25)",
+            background: "rgba(7, 25, 82, 0.35)",
+            color: "#97FEED",
+            fontSize: "0.75rem",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+          }}
+        >
+          {isReady ? (isAuthenticated ? username || "Authenticated" : "Signed out") : "Signing in"}
+        </span>
+        <button
+          onClick={isAuthenticated ? logout : login}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.45rem",
+            padding: "0.65rem 1rem",
+            borderRadius: 999,
+            border: "1px solid rgba(151, 254, 237, 0.35)",
+            background: isAuthenticated
+              ? "rgba(7, 25, 82, 0.55)"
+              : "linear-gradient(135deg, #97FEED 0%, #35A29F 100%)",
+            color: isAuthenticated ? "#97FEED" : "#071952",
+            fontSize: "0.8rem",
+            fontWeight: 800,
+            cursor: "pointer",
+          }}
+        >
+          {isAuthenticated ? <LogOut size={14} /> : <LogIn size={14} />}
+          {isAuthenticated ? "Sign out" : "Sign in"}
+        </button>
+      </div>
     </nav>
   );
 }

@@ -26,8 +26,8 @@ KEDRO_CMD = (
 
 with DAG(
     dag_id="ml_training",
-    description="Weekly Kedro ML model training for congestion and energy models",
-    schedule_interval="0 2 * * 1",   # Every Monday at 02:00 campus time
+    description="Daily Kedro ML model training for congestion and energy models",
+    schedule_interval="0 2 * * *",   # Every day at 02:00 campus time
     start_date=datetime(2025, 1, 6, tzinfo=None),
     catchup=False,
     default_args=default_args,

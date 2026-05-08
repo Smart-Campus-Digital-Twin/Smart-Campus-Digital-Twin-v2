@@ -17,8 +17,6 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
 
-import mlflow
-import mlflow.pyfunc
 import numpy as np
 import pandas as pd
 import uvicorn
@@ -29,6 +27,13 @@ from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
+
+try:
+    import mlflow
+    import mlflow.pyfunc
+except Exception as exc:  # noqa: BLE001
+    mlflow = None  # type: ignore[assignment]
+    log.warning("MLflow import disabled: %s", exc)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 INFLUX_URL = os.environ.get("INFLUXDB_URL", "http://influxdb:8086")
@@ -82,26 +87,29 @@ async def lifespan(app: FastAPI):
     write_api = influx_client.write_api(write_options=SYNCHRONOUS)
     log.info("InfluxDB client initialized")
 
-    # Load models from MLflow
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-    client = mlflow.tracking.MlflowClient()
+    # Load models from MLflow if the dependency is available.
+    if mlflow is None:
+        log.warning("MLflow is unavailable; prediction models will not be loaded.")
+    else:
+        mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+        client = mlflow.tracking.MlflowClient()
 
-    for model_name, model_key in [
-        (CANTEEN_MODEL_NAME, "canteen"),
-        (LIBRARY_MODEL_NAME, "library"),
-        (ENERGY_MODEL_NAME, "energy"),
-    ]:
-        try:
-            versions = client.get_latest_versions(model_name, stages=["Production"])
-            if not versions:
-                log.warning("No Production version for '%s' — skipping.", model_name)
-                continue
-            run_id = versions[0].run_id
-            model_uri = f"models:/{model_name}/Production"
-            models[model_key] = mlflow.pyfunc.load_model(model_uri)
-            log.info("Loaded model '%s' (run=%s)", model_name, run_id[:8])
-        except Exception as exc:
-            log.warning("Failed to load model '%s': %s", model_name, exc)
+        for model_name, model_key in [
+            (CANTEEN_MODEL_NAME, "canteen"),
+            (LIBRARY_MODEL_NAME, "library"),
+            (ENERGY_MODEL_NAME, "energy"),
+        ]:
+            try:
+                versions = client.get_latest_versions(model_name, stages=["Production"])
+                if not versions:
+                    log.warning("No Production version for '%s' — skipping.", model_name)
+                    continue
+                run_id = versions[0].run_id
+                model_uri = f"models:/{model_name}/Production"
+                models[model_key] = mlflow.pyfunc.load_model(model_uri)
+                log.info("Loaded model '%s' (run=%s)", model_name, run_id[:8])
+            except Exception as exc:
+                log.warning("Failed to load model '%s': %s", model_name, exc)
 
     log.info("Loaded %d models: %s", len(models), list(models.keys()))
 

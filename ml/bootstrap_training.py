@@ -81,7 +81,7 @@ def generate_datasets():
         if not p.exists():
             log.error("Expected dataset not found: %s", p)
             sys.exit(1)
-        log.info("  ✓ %s  (%.1f MB)", p.name, p.stat().st_size / 1e6)
+        log.info("  [OK] %s  (%.1f MB)", p.name, p.stat().st_size / 1e6)
 
 
 # =============================================================================
@@ -118,7 +118,7 @@ def run_kedro_pipelines():
         if result.returncode != 0:
             log.error("Pipeline '%s' failed — aborting.", pipeline_name)
             sys.exit(1)
-        log.info("  ✓ %s complete.", description)
+        log.info("  [OK] %s complete.", description)
 
 
 # =============================================================================
@@ -154,7 +154,7 @@ def promote_models():
                 archive_existing_versions=True,
             )
             log.info(
-                "  ✓ '%s' v%s → Production  (run_id: %s)",
+                "  [OK] '%s' v%s -> Production  (run_id: %s)",
                 model_name, version_num, latest.run_id,
             )
         except Exception as e:
@@ -187,7 +187,7 @@ def print_summary():
                 mae  = run.data.metrics.get("mae",  "N/A")
                 rmse = run.data.metrics.get("rmse", "N/A")
                 log.info(
-                    "  ✓ %-35s  v%-3s  MAE=%-8s  RMSE=%s",
+                    "  [OK] %-35s  v%-3s  MAE=%-8s  RMSE=%s",
                     model_name, v.version,
                     f"{mae:.4f}" if isinstance(mae, float) else mae,
                     f"{rmse:.4f}" if isinstance(rmse, float) else rmse,

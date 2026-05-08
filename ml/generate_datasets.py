@@ -451,7 +451,7 @@ def gen_canteen_dataset(out_path: str) -> None:
             w.writerow({k: row[k] for k in _CANTEEN_FIELDS if k in row})
             written += 1
 
-    print(f"    ✓ {written:,} rows  →  {out_path}")
+    print(f"    DONE {written:,} rows  ->  {out_path}")
 
 
 # =============================================================================
@@ -528,7 +528,7 @@ def gen_library_dataset(out_path: str) -> None:
             w.writerow({k: row[k] for k in _LIBRARY_FIELDS if k in row})
             written += 1
 
-    print(f"    ✓ {written:,} rows  →  {out_path}")
+    print(f"    DONE {written:,} rows  ->  {out_path}")
 
 
 # =============================================================================
@@ -644,7 +644,7 @@ def gen_energy_dataset(out_path: str) -> None:
             w.writerow({k: row[k] for k in _ENERGY_FIELDS if k in row})
             written += 1
 
-    print(f"    ✓ {written:,} rows  →  {out_path}")
+    print(f"    DONE {written:,} rows  ->  {out_path}")
 
 
 # =============================================================================

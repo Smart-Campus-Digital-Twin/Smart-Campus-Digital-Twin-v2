@@ -12,14 +12,18 @@ resources:
   - kafka.yaml
   - kafka-init.yaml
   - kafka-connect.yaml
+  - bridge.yaml
   - influxdb.yaml
   - mosquitto.yaml
   - keycloak.yaml
   - mlflow.yaml
   - ml-consumer.yaml
+  - ml-prediction.yaml
+  - ml-retrain-daemon.yaml
   - api.yaml
   - simulator.yaml
   - frontend.yaml
+  - postgres-observer.yaml
   - grafana.yaml
   - kong.yaml
   - prometheus.yaml
@@ -40,6 +44,9 @@ images:
     newTag: v3
   - name: campus-ml-inference
     newName: ghcr.io/smart-campus-digital-twin/campus-ml-inference
+    newTag: v3
+  - name: campus-ml-prediction
+    newName: ghcr.io/smart-campus-digital-twin/campus-ml-prediction
     newTag: v3
 
 configMapGenerator:

@@ -5,6 +5,7 @@ import { Zone, STATUS_COLORS } from "./DashboardTypes";
 import { BUILDING_DATA } from "../indoor/FloorData";
 import { usePrefersReducedMotion } from "@/app/hooks/usePrefersReducedMotion";
 import { useAnimatedValue } from "@/app/hooks/useAnimatedValue";
+import MLPredictionPanel from "./MLPredictionPanel";
 
 interface DashboardSidebarProps {
   zones: Zone[];
@@ -402,6 +403,12 @@ export default function DashboardSidebar({
             Go Inside
           </button>
         )}
+        
+        <MLPredictionPanel 
+          selectedZoneId={selectedId} 
+          selectedZoneName={selectedZone.name}
+          occupancy={selectedZone.occupancy}
+        />
       </div>
     </nav>
   );

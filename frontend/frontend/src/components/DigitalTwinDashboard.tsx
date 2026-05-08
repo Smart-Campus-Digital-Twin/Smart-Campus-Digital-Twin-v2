@@ -4,18 +4,15 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import { Navigation, Eye } from "lucide-react";
-import {
-  STABLE_INITIAL_ZONES,
-  generateInitialZones,
-  Zone,
-} from "./dashboard/DashboardTypes";
-import { updateZone } from "./dashboard/DashboardHelpers";
+import { generateInitialZones, Zone } from "./dashboard/DashboardTypes";
 import DashboardSidebar from "./dashboard/DashboardSidebar";
 import DashboardHeader from "./dashboard/DashboardHeader";
 import DashboardScene from "./dashboard/DashboardScene";
+import { useAuth } from "@/components/auth/KeycloakProvider";
 
 export default function DigitalTwinDashboard() {
-  const [zones, setZones] = useState<Zone[]>(STABLE_INITIAL_ZONES);
+  const { fetchWithAuth, isReady, isAuthenticated } = useAuth();
+  const [zones, setZones] = useState<Zone[]>(() => generateInitialZones());
   const [selectedId, setSelectedId] = useState<string>("it");
   const [walkMode, setWalkMode] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -61,10 +58,14 @@ export default function DigitalTwinDashboard() {
   };
 
   useEffect(() => {
+    if (!isReady || !isAuthenticated) {
+      return;
+    }
+
     const fetchZones = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-        const res = await fetch(`${apiUrl}/campus/zones`);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api";
+        const res = await fetchWithAuth(`${apiUrl}/campus/zones`);
         if (res.ok) {
           const data = await res.json();
           setZones(data);
@@ -74,13 +75,11 @@ export default function DigitalTwinDashboard() {
       }
     };
 
-    // Initial random stats to show UI immediately then override with true values
-    setZones(generateInitialZones());
     fetchZones();
 
     const t = setInterval(fetchZones, 5000);
     return () => clearInterval(t);
-  }, []);
+  }, [fetchWithAuth, isAuthenticated, isReady]);
 
   useEffect(() => {
     const check = () => {

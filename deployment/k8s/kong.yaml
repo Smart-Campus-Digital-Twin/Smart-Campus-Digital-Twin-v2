@@ -62,8 +62,6 @@ spec:
           ports:
             - containerPort: 8000
               name: proxy
-            - containerPort: 8001
-              name: admin
           env:
             - name: KONG_DATABASE
               value: "off"
@@ -129,9 +127,6 @@ spec:
     - port: 80
       targetPort: 8000
       name: proxy
-    - port: 8001
-      targetPort: 8001
-      name: admin
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -139,7 +134,6 @@ metadata:
   name: campus-ingress
   namespace: campus
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
@@ -166,13 +160,6 @@ spec:
                 name: kong
                 port:
                   number: 80
-          - path: /ws
-            pathType: Prefix
-            backend:
-              service:
-                name: kong
-                port:
-                  number: 80
           - path: /grafana
             pathType: Prefix
             backend:
@@ -184,6 +171,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: frontend
+                name: kong
                 port:
                   number: 80

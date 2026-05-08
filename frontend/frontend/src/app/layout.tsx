@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import type { Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/components/auth/KeycloakProvider";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,10 +28,6 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import ErrorBoundary from "@/components/ErrorBoundary";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,11 +39,13 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <Navbar />
-        <main style={{ flex: 1 }}>
-          <ErrorBoundary>{children}</ErrorBoundary>
-        </main>
-        <Footer />
+        <AuthProvider>
+          <Navbar />
+          <main style={{ flex: 1 }}>
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );

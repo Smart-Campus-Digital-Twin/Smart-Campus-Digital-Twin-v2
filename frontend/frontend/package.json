@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node ./scripts/clean-next.mjs",
     "dev": "next dev -H localhost",
     "dev:mobile": "next dev -H 0.0.0.0",
+    "prebuild": "node ./scripts/clean-next.mjs",
     "build": "next build",
     "start": "next start",
     "start:mobile": "next start -H 0.0.0.0",
@@ -13,6 +15,7 @@
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.0",
+    "keycloak-js": "^26.0.7",
     "lucide-react": "^1.11.0",
     "next": "16.2.4",
     "react": "19.2.4",

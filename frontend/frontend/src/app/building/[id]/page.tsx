@@ -12,6 +12,7 @@ export default function DynamicBuildingPage({ params }: { params: Promise<{ id: 
   const { id } = use(params);
   const building = BUILDING_DATA[id];
   const [isMobile, setIsMobile] = useState(false);
+  const [floor, setFloor] = useState(building?.minFloor ?? 0);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 1024);
@@ -23,8 +24,6 @@ export default function DynamicBuildingPage({ params }: { params: Promise<{ id: 
   if (!building) {
     return notFound();
   }
-
-  const [floor, setFloor] = useState(building.minFloor);
 
   // Calculate index for floor array (offset by minFloor if necessary)
   const floorIndex = floor - building.minFloor;
@@ -131,6 +130,7 @@ export default function DynamicBuildingPage({ params }: { params: Promise<{ id: 
         maxWidth: isMobile ? '100%' : '800px'
       }}>
         <FloorPlan2D
+          key={`${id}-${floor}`}
           buildingId={id}
           floor={building.floors[floorIndex]}
           floorNumber={floor}
