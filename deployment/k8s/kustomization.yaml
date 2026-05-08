@@ -11,7 +11,6 @@ resources:
   - redis.yaml
   - kafka.yaml
   - kafka-init.yaml
-  - kafka-connect.yaml
   - bridge.yaml
   - influxdb.yaml
   - mosquitto.yaml
@@ -41,9 +40,6 @@ images:
     newTag: v3
   - name: campus-ml-consumer
     newName: ghcr.io/smart-campus-digital-twin/campus-ml-consumer
-    newTag: v3
-  - name: campus-ml-inference
-    newName: ghcr.io/smart-campus-digital-twin/campus-ml-inference
     newTag: v3
   - name: campus-ml-prediction
     newName: ghcr.io/smart-campus-digital-twin/campus-ml-prediction
