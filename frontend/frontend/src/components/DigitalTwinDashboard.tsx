@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
-import { Navigation, Eye } from "lucide-react";
+import { Navigation, Eye,, Maximize, Minimize  } from "lucide-react";
 import {
   STABLE_INITIAL_ZONES,
   Zone,
@@ -397,6 +397,27 @@ export default function DigitalTwinDashboard() {
                   RUN {runMode ? "ON" : "OFF"}
                 </button>
               )}
+                            <button
+                onClick={() => {
+                  toggleFullscreen().catch(() => {});
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  background: isFullscreen ? "#FAC75A" : "rgba(7,25,82,0.6)",
+                  border: "1px solid rgba(151,254,237,0.3)",
+                  color: isFullscreen ? "#071952" : "#fff",
+                  fontSize: 9,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                {isFullscreen ? <Minimize size={12} /> : <Maximize size={12} />}
+                {isFullscreen ? "EXIT FULLSCREEN" : "FULLSCREEN"}
+              </button>
               <button
                 onClick={toggleWalkMode}
                 style={{
