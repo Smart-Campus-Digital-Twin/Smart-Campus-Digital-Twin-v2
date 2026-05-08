@@ -61,6 +61,9 @@ _ZONE_TO_BUILDING: dict[str, str] = {
 class ZoneData(BaseModel):
     id: str
     name: str
+    buildingId: str
+    totalCapacity: int
+    currentOccupancy: int
     energyKw: float
     occupancy: int       # occupancy percentage (0-100%)
     temperatureC: float  # mean across rooms
@@ -220,6 +223,9 @@ async def campus_zones(
         zones.append(ZoneData(
             id=zone_id,
             name=zone_name,
+            buildingId=bld_id,
+            totalCapacity=max(0, total_capacity),
+            currentOccupancy=max(0, int(round(total_occ_count))),
             temperatureC=avg_temp,
             occupancy=occupancy_pct,
             energyKw=energy_kw,

@@ -3,6 +3,9 @@ export type ZoneStatus = "normal" | "busy" | "critical";
 export type Zone = {
   id: string;
   name: string;
+  buildingId?: string;
+  totalCapacity?: number;
+  currentOccupancy?: number;
   energyKw: number;
   occupancy: number;
   temperatureC: number;
@@ -324,6 +327,9 @@ export const generateInitialZones = (): Zone[] => {
     return {
       id: layout.id,
       name: layout.name,
+      buildingId: layout.id,
+      totalCapacity: 100,
+      currentOccupancy: Math.round((occupancy / 100) * 100),
       energyKw: parseFloat(energyKw.toFixed(1)),
       occupancy,
       temperatureC: parseFloat(temperatureC.toFixed(1)),

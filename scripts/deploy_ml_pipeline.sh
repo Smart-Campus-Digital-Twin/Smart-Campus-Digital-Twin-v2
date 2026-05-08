@@ -32,6 +32,38 @@ print_info() {
     echo -e "ℹ $1"
 }
 
+# Pre-deploy quality gates (lint + unit tests)
+run_quality_gates() {
+    if [ "${SKIP_QUALITY_GATES:-0}" = "1" ]; then
+        print_warning "Skipping quality gates (SKIP_QUALITY_GATES=1)"
+        return
+    fi
+
+    if ! command -v make > /dev/null 2>&1; then
+        print_error "'make' is required to run lint/test quality gates."
+        print_info "Install make or run with SKIP_QUALITY_GATES=1"
+        exit 1
+    fi
+
+    echo ""
+    print_info "Step 0: Running lint checks..."
+    if make lint; then
+        print_success "Lint checks passed"
+    else
+        print_error "Lint checks failed. Fix issues before deployment."
+        exit 1
+    fi
+
+    echo ""
+    print_info "Step 0b: Running unit tests..."
+    if make test; then
+        print_success "Unit tests passed"
+    else
+        print_error "Unit tests failed. Fix tests before deployment."
+        exit 1
+    fi
+}
+
 # Check if docker is running
 if ! docker info > /dev/null 2>&1; then
     print_error "Docker is not running. Please start Docker and try again."
@@ -39,6 +71,9 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 print_success "Docker is running"
+
+# Step 0: quality gates
+run_quality_gates
 
 # Step 1: Build services
 echo ""

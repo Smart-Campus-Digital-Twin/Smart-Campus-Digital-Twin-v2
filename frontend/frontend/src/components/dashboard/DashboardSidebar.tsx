@@ -408,6 +408,9 @@ export default function DashboardSidebar({
           selectedZoneId={selectedId} 
           selectedZoneName={selectedZone.name}
           occupancy={selectedZone.occupancy}
+          buildingId={selectedZone.buildingId}
+          totalCapacity={selectedZone.totalCapacity}
+          currentOccupancy={selectedZone.currentOccupancy}
         />
       </div>
     </nav>

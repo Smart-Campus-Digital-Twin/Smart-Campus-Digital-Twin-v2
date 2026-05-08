@@ -16,12 +16,18 @@ interface MLPredictionPanelProps {
   selectedZoneId: string;
   selectedZoneName: string;
   occupancy: number;
+  buildingId?: string;
+  totalCapacity?: number;
+  currentOccupancy?: number;
 }
 
 export default function MLPredictionPanel({
   selectedZoneId,
   selectedZoneName,
   occupancy,
+  buildingId,
+  totalCapacity,
+  currentOccupancy,
 }: MLPredictionPanelProps) {
   const { fetchWithAuth, isReady, isAuthenticated } = useAuth();
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
@@ -58,10 +64,10 @@ export default function MLPredictionPanel({
         body: JSON.stringify({
           room_id: selectedZoneId,
           room_type: roomType,
-          building_id: "main_campus", // Default for now
+          building_id: buildingId || selectedZoneId,
           timestamp: new Date().toISOString(),
-          avg: occupancy,
-          capacity: 100,
+          avg: currentOccupancy ?? occupancy,
+          capacity: totalCapacity && totalCapacity > 0 ? totalCapacity : 100,
           history: [occupancy, occupancy * 0.9, occupancy * 1.1, occupancy], // Mock history for now
           context: {
             is_weekend: new Date().getDay() === 0 || new Date().getDay() === 6 ? 1 : 0,
