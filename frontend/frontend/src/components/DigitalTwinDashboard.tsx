@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
-import { Navigation, Eye,, Maximize, Minimize } from "lucide-react";
+import { Navigation, Eye, Maximize, Minimize } from "lucide-react";
 import {
   STABLE_INITIAL_ZONES,
   Zone,
