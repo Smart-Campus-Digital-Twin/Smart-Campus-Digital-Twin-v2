@@ -37,14 +37,6 @@ services:
           - "/"
         strip_path: false
 
-  - name: flink-ui
-    url: http://flink-jobmanager:8081
-    routes:
-      - name: flink-web-ui
-        paths:
-          - "/flink"
-        strip_path: true
-
 plugins:
   - name: rate-limiting
     config:

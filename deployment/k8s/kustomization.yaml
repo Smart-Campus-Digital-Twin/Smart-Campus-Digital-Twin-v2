@@ -7,6 +7,7 @@ resources:
   - namespace.yaml
   - secrets.yaml
   - configmap.yaml
+  - configmap-extras.yaml
   - postgres.yaml
   - redis.yaml
   - kafka.yaml
@@ -25,6 +26,7 @@ resources:
   - postgres-observer.yaml
   - grafana.yaml
   - kong.yaml
+  - konnect.yaml
   - prometheus.yaml
   - node-exporter.yaml
 
@@ -74,6 +76,5 @@ configMapGenerator:
   - name: kong-render-scripts
     files:
       - render_kong_config.py=infra/kong/render_kong_config.py
-      - get_issuer.py=infra/kong/get_issuer.py
     options:
       disableNameSuffixHash: true
