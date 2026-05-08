@@ -5,15 +5,32 @@ metadata:
   namespace: campus
   labels:
     app: postgres-observer
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
 spec:
   containers:
     - name: adminer
-      image: adminer:4.8.1
+      image: michalhosna/adminer:latest
       ports:
         - containerPort: 8080
       env:
         - name: ADMINER_DEFAULT_SERVER
           value: postgres
+        - name: ADMINER_DEFAULT_USER
+          valueFrom:
+            secretKeyRef:
+              name: campus-postgres
+              key: POSTGRES_USER
+        - name: ADMINER_DEFAULT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: campus-postgres
+              key: POSTGRES_PASSWORD
+        - name: ADMINER_DEFAULT_DB
+          valueFrom:
+            secretKeyRef:
+              name: campus-postgres
+              key: POSTGRES_DB
       resources:
         requests:
           memory: 32Mi
