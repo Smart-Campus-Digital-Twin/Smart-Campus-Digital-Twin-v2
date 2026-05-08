@@ -48,9 +48,13 @@ data:
         print(f"MQTT disconnected rc={rc}", flush=True)
 
     def on_message(client, userdata, msg):
+<<<<<<< HEAD
         topic_parts = msg.topic.split('/')
         sensor_type = topic_parts[-1] if len(topic_parts) > 0 else ""
         kafka_topic = f"sensors.{sensor_type}" if sensor_type in ["temperature", "occupancy", "energy"] else DLQ_TOPIC
+=======
+        kafka_topic = TOPIC_MAP.get(msg.topic, DLQ_TOPIC)
+>>>>>>> 812e2908f1ffbafb7282f5dacb1a59fca5d5d301
         try:
             _producer.send(kafka_topic, value=msg.payload, key=msg.topic.encode())
             _counters["sent"] += 1
@@ -80,6 +84,10 @@ data:
         HTTPServer(("0.0.0.0", 9090), HealthHandler).serve_forever()
 
     if __name__ == "__main__":
+<<<<<<< HEAD
+=======
+        global _producer
+>>>>>>> 812e2908f1ffbafb7282f5dacb1a59fca5d5d301
         # Wait for Kafka broker
         while True:
             try:
