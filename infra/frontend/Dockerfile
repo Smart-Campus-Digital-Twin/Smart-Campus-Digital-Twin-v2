@@ -14,7 +14,7 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 COPY frontend/frontend/package.json frontend/frontend/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+    npm install
 
 # ---------------------------------------------------------------------------
 # Stage 2 — build the Next.js application
