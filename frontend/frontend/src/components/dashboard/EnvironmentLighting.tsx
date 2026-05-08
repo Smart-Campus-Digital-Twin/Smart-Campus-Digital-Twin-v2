@@ -13,15 +13,11 @@ export default function EnvironmentLighting() {
     const checkTime = () => {
       const currentHour = new Date().getHours();
       // Night is from 18:00 (6 PM) to 5:59 AM (before 6 AM)
-      /*if (true) {
-        setIsNight(true);
-      }// debugging */
-      
       if (currentHour >= 18 || currentHour < 6) {
         setIsNight(true);
       } else {
         setIsNight(false);
-      }// */
+      }
     };
 
     // Check immediately
