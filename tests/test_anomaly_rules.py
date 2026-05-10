@@ -61,7 +61,7 @@ def detector():
     ]:
         if mod not in sys.modules:
             sys.modules[mod] = MagicMock()
-            
+
     sys.modules["pyflink.datastream.functions"].KeyedProcessFunction = object
 
     # Import the module so it exists as an attribute on processing.flink.jobs
