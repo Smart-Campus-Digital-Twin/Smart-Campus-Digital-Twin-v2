@@ -7,13 +7,11 @@ Run: pytest tests/test_dashboard_pipeline.py -v
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
-import pytest_asyncio
 
-from tests.conftest_dashboard import BUILDING_ID, ROOM_ID, NODE_ID, USER_ID
-
+from tests.conftest_dashboard import BUILDING_ID, NODE_ID, ROOM_ID
 
 pytestmark = pytest.mark.asyncio
 
@@ -24,8 +22,8 @@ pytestmark = pytest.mark.asyncio
 
 class TestJwtSecurity:
     async def test_no_token_returns_401(self, client):
-        from api.main import app
         from api.core.security import get_current_user
+        from api.main import app
         app.dependency_overrides.pop(get_current_user, None)
         resp = await client.get(f"/buildings/{BUILDING_ID}")
         assert resp.status_code in (401, 403)
@@ -41,9 +39,8 @@ class TestJwtSecurity:
         assert resp.status_code == 403
 
     async def test_keycloak_unknown_kid_raises(self):
-        from api.core.security import _jwks_cache, _decode_keycloak
-        with patch.object(_jwks_cache, "get_key", AsyncMock(return_value=None)):
-            with pytest.raises(ValueError, match="Unknown kid"):
+        from api.core.security import _decode_keycloak, _jwks_cache
+        with patch.object(_jwks_cache, "get_key", AsyncMock(return_value=None)), pytest.raises(ValueError, match="Unknown kid"):
                 await _decode_keycloak("eyJhbGciOiJSUzI1NiIsImtpZCI6InRlc3QifQ.e30.sig")
 
 
@@ -133,19 +130,20 @@ class TestAlertsRouter:
 
 class TestWebSocket:
     async def test_ws_invalid_token_closed_4001(self):
-        from api.main import app
         from httpx_ws import aconnect_ws
+
+        from api.main import app
         try:
             async with aconnect_ws(
                 f"/ws/buildings/{BUILDING_ID}?token=bad.token.here", app
-            ) as ws:
+            ):
                 pass
         except Exception:
             pass  # expected — connection closed with 4001
 
     async def test_ws_missing_token_rejected(self):
-        import httpx
         from httpx import ASGITransport, AsyncClient
+
         from api.main import app
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             resp = await ac.get(f"/ws/buildings/{BUILDING_ID}")

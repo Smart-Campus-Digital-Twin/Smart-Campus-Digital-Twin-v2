@@ -18,13 +18,13 @@ Message types emitted:
 from __future__ import annotations
 
 import asyncio
-import json
+import contextlib
 import logging
 import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 
 from api.core.config import settings
 
@@ -278,10 +278,8 @@ class ConnectionManager:
                             "Closing stale WS building=%s user=%s (no pong)",
                             building_id, conn.user_id,
                         )
-                        try:
+                        with contextlib.suppress(Exception):
                             await conn.ws.close(code=1001)
-                        except Exception:
-                            pass
                         self.disconnect(building_id, conn.ws)
 
                     await self._broadcast(building_id, {"type": "ping"})

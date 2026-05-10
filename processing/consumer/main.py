@@ -15,11 +15,11 @@ Architecture:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
 import signal
-from datetime import datetime, timezone
 
 from aiokafka import AIOKafkaConsumer
 from aiokafka.errors import KafkaConnectionError
@@ -158,10 +158,8 @@ async def run() -> None:
 
 
 def main() -> None:
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(run())
-    except KeyboardInterrupt:
-        pass
 
 
 if __name__ == "__main__":

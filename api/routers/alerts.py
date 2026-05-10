@@ -6,7 +6,6 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from api.core.security import TokenClaims, assert_building_access, get_current_user
 from api.db.postgres import session_dep

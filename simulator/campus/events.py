@@ -21,7 +21,6 @@ import os
 import random
 from dataclasses import dataclass, field
 from datetime import date, timedelta
-from typing import Dict, List
 
 import yaml
 
@@ -30,13 +29,13 @@ from .holidays import is_holiday
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 
-def _load_events_config() -> Dict:
+def _load_events_config() -> dict:
     path = os.path.join(_DATA_DIR, "events.yaml")
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
-_EVT_CFG: Dict = _load_events_config()
+_EVT_CFG: dict = _load_events_config()
 
 
 
@@ -50,7 +49,7 @@ class CampusEvent:
     start_hour: float        # e.g. 18.0 = 18:00
     end_hour:   float        # e.g. 22.0 = 22:00
     # building_id → target occupancy factor (0-1) while this event is active
-    venue_fill: Dict[str, float] = field(default_factory=dict)
+    venue_fill: dict[str, float] = field(default_factory=dict)
 
     def is_active_at(self, hour: float) -> bool:
         return self.start_hour <= hour < self.end_hour
@@ -71,25 +70,25 @@ class EventCalendar:
     """
 
     def __init__(self) -> None:
-        self._cache: Dict[date, List[CampusEvent]] = {}
+        self._cache: dict[date, list[CampusEvent]] = {}
         # Pre-build the full padura schedule so dates don't collide
-        self._padura_by_date: Dict[date, List[CampusEvent]] = {}
+        self._padura_by_date: dict[date, list[CampusEvent]] = {}
         self._build_padura_schedule(range(2022, 2028))
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def events_for_date(self, d: date) -> List[CampusEvent]:
+    def events_for_date(self, d: date) -> list[CampusEvent]:
         if d not in self._cache:
             self._cache[d] = self._generate(d)
         return self._cache[d]
 
-    def active_venue_fill(self, d: date, hour: float) -> Dict[str, float]:
+    def active_venue_fill(self, d: date, hour: float) -> dict[str, float]:
         """
         Returns a dict mapping building_id → occupancy factor for all events
         currently happening at `hour` on date `d`.  Multiple events can
         affect different venues simultaneously.
         """
-        fill: Dict[str, float] = {}
+        fill: dict[str, float] = {}
         for evt in self.events_for_date(d):
             if evt.is_active_at(hour):
                 for bld, factor in evt.venue_fill.items():
@@ -152,8 +151,8 @@ class EventCalendar:
 
     # ── Daily event generation ────────────────────────────────────────────────
 
-    def _generate(self, d: date) -> List[CampusEvent]:
-        events: List[CampusEvent] = []
+    def _generate(self, d: date) -> list[CampusEvent]:
+        events: list[CampusEvent] = []
         holiday = is_holiday(d)
         is_weekend = d.weekday() >= 5   # Sat=5, Sun=6
         doy        = d.timetuple().tm_yday

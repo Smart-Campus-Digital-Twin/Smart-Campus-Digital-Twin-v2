@@ -25,8 +25,8 @@ class ServerRoomZone(BaseZone):
         Override to only create temperature and energy sensors.
         Server rooms don't need occupancy sensors.
         """
-        from simulator.sensors.temperature import TemperatureSensor
         from simulator.sensors.energy import EnergySensor
+        from simulator.sensors.temperature import TemperatureSensor
 
         for sensor_type in self.room.sensors:
             kwargs = dict(

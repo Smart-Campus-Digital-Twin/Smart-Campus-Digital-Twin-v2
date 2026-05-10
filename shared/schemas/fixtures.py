@@ -15,7 +15,7 @@ Usage:
 from __future__ import annotations
 
 from .aggregation import AggregatedReading
-from .anomaly import AnomalyEvent, AnomalyType, Severity
+from .anomaly import AnomalyEvent
 from .kafka import KafkaMessage
 from .sensor import SensorReading, SensorType, Unit
 

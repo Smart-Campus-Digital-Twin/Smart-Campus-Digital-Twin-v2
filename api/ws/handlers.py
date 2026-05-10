@@ -24,7 +24,6 @@ import logging
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from api.core.config import settings
 from api.core.security import validate_ws_token
 from api.ws.hub import hub
 

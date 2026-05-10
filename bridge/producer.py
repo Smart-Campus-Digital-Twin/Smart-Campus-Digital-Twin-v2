@@ -15,7 +15,6 @@ import json
 import logging
 
 from aiokafka import AIOKafkaProducer
-from aiokafka.errors import KafkaConnectionError
 
 from .config import config
 

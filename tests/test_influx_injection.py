@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 from fastapi import HTTPException
 
 from api.clients.influx import _validate_tag
-
 
 # ---------------------------------------------------------------------------
 # _validate_tag allowlist tests
@@ -48,8 +49,7 @@ def test_injection_attempts_raise_http_400(bad_value):
 @pytest.mark.asyncio
 async def test_latest_readings_rejects_injection(monkeypatch):
     """latest_readings must reject bad building_id before any HTTP call."""
-    import asyncio
-    from unittest.mock import AsyncMock, MagicMock, patch
+    from unittest.mock import AsyncMock, patch
 
     with patch("api.clients.influx.config") as mock_cfg:
         mock_cfg.influxdb_url   = "http://localhost:8086"
@@ -69,7 +69,7 @@ async def test_latest_readings_rejects_injection(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_room_history_rejects_bad_sensor_type():
-    from datetime import datetime, timezone
+    from datetime import datetime
     from unittest.mock import AsyncMock, patch
 
     with patch("api.clients.influx.config"):
@@ -80,8 +80,8 @@ async def test_room_history_rejects_bad_sensor_type():
         with pytest.raises(HTTPException) as exc_info:
             await client.room_history(
                 room_id     = "ENG-101",
-                start       = datetime(2025, 5, 1, tzinfo=timezone.utc),
-                stop        = datetime(2025, 5, 2, tzinfo=timezone.utc),
+                start       = datetime(2025, 5, 1, tzinfo=UTC),
+                stop        = datetime(2025, 5, 2, tzinfo=UTC),
                 sensor_type = 'energy"); drop table("sensors")',
             )
         assert exc_info.value.status_code == 400

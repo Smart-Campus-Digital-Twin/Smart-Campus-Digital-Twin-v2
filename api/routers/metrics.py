@@ -8,7 +8,7 @@ All queries target pre-aggregated buckets (campus_1m, campus_1h) except
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -78,7 +78,7 @@ async def history(
     influx:      InfluxAPIClient = Depends(get_influx),
 ) -> list[AggregatedPeriod]:
     if stop is None:
-        stop = datetime.now(timezone.utc)
+        stop = datetime.now(UTC)
     if stop <= start:
         raise HTTPException(status_code=422, detail="stop must be after start")
 

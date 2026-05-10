@@ -13,8 +13,8 @@ Tests cover:
 from __future__ import annotations
 
 import pytest
-from processing.consumer.anomaly import AnomalyDetector, RollingStats
 
+from processing.consumer.anomaly import AnomalyDetector, RollingStats
 
 # ─────────────────────────────────────────────────────────────────────────────
 # RollingStats unit tests
@@ -94,7 +94,7 @@ class TestTemperatureAnomalies:
         # Feed slightly varied readings to give nonzero stdev
         import itertools
         stable_vals = itertools.cycle([21.5, 22.0, 22.5, 22.0, 21.8])
-        for _, v in zip(range(30), stable_vals):
+        for _, v in zip(range(30), stable_vals, strict=False):
             self.detector.check("sensors.temperature", self._temp_payload(v))
         # Then send a spike well within hard limits but > 3σ from stable mean ~22°C
         # Mean≈22, stdev≈0.35 → z-score of 40°C ≈ (40-22)/0.35 ≈ 51 >> 3

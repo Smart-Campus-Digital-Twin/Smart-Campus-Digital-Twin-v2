@@ -12,8 +12,9 @@ Key patterns:
   - Scaled by academic calendar congestion
 """
 
-from .base_zone import BaseZone, ZoneContext
 from simulator.campus.schedule import library_ratio as _library_ratio
+
+from .base_zone import BaseZone, ZoneContext
 
 
 class LibraryZone(BaseZone):

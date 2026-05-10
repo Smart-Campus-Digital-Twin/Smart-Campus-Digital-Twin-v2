@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from shared.schemas.sensor import SensorReading, SensorType, Unit
-
+from shared.schemas.sensor import SensorType
 
 # ---------------------------------------------------------------------------
 # Helpers — build minimal SensorReading objects without Flink state
@@ -24,7 +23,7 @@ def _reading(sensor_type: str, value: float, room_id: str = "ENG-101") -> MagicM
     r.building_id = "ENG"
     r.floor       = 1
     r.unit        = MagicMock()
-    r.timestamp   = datetime(2025, 5, 1, 10, 0, 0, tzinfo=timezone.utc)
+    r.timestamp   = datetime(2025, 5, 1, 10, 0, 0, tzinfo=UTC)
     r.quality     = 1.0
     return r
 

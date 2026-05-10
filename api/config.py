@@ -34,7 +34,7 @@ class APIConfig(BaseSettings):
     default_page_size: int = Field(100, ge=1, le=1000)
 
     @model_validator(mode="after")
-    def _require_secrets(self) -> "APIConfig":
+    def _require_secrets(self) -> APIConfig:
         """Fail fast if any mandatory secret is missing or uses a known-bad default."""
         if self.influxdb_token in _KNOWN_BAD_SECRETS:
             raise ValueError(

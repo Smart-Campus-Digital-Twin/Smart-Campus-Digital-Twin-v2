@@ -147,7 +147,7 @@ async def _decode_keycloak(token: str) -> TokenClaims:
     try:
         payload = jwt.decode(token, key, **decode_kwargs)
     except ExpiredSignatureError:
-        raise ValueError("Token expired")
+        raise ValueError("Token expired") from None
     except JWTError as exc:
         raise ValueError(str(exc)) from exc
 
@@ -166,7 +166,7 @@ def _decode_hs256(token: str) -> TokenClaims:
             options={"require": ["sub", "exp", "iat"]},
         )
     except ExpiredSignatureError:
-        raise ValueError("Token expired")
+        raise ValueError("Token expired") from None
     except JWTError as exc:
         raise ValueError(str(exc)) from exc
     return _extract_claims(payload)

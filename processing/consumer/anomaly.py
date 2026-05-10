@@ -15,11 +15,10 @@ from __future__ import annotations
 
 import logging
 import os
-from collections import deque
-from datetime import datetime, timezone
-from typing import Any
-
 import statistics
+from collections import deque
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger("ml-consumer.anomaly")
 
@@ -81,7 +80,7 @@ def _anomaly_event(
         "sensor_id": payload.get("sensor_id", "unknown"),
         "value": value,
         "severity": severity,
-        "detected_at": datetime.now(timezone.utc).isoformat(),
+        "detected_at": datetime.now(UTC).isoformat(),
         "raw_payload": payload,
     }
 

@@ -51,7 +51,7 @@ class AggregatedReading(BaseModel):
     quality_avg:  float      = Field(..., ge=0.0, le=1.0)
 
     @model_validator(mode="after")
-    def min_le_avg_le_max(self) -> "AggregatedReading":
+    def min_le_avg_le_max(self) -> AggregatedReading:
         if not (self.min <= self.avg <= self.max):
             raise ValueError(
                 f"Aggregation invariant violated: min={self.min} <= "
@@ -60,7 +60,7 @@ class AggregatedReading(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def window_start_before_end(self) -> "AggregatedReading":
+    def window_start_before_end(self) -> AggregatedReading:
         if self.window_start >= self.window_end:
             raise ValueError("window_start must be strictly before window_end")
         return self
@@ -69,7 +69,7 @@ class AggregatedReading(BaseModel):
         return self.model_dump_json()
 
     @classmethod
-    def from_json(cls, raw: str | bytes) -> "AggregatedReading":
+    def from_json(cls, raw: str | bytes) -> AggregatedReading:
         return cls.model_validate_json(raw)
 
     def to_line_protocol(self, measurement: str = "sensor_1m") -> str:

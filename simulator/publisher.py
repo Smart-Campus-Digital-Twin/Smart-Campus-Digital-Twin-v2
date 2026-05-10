@@ -7,8 +7,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import paho.mqtt.client as mqtt
 
-from shared.models import SensorReading
 from shared.logging_config import get_logger
+from shared.models import SensorReading
 from simulator.config import config
 
 logger = get_logger("simulator.publisher", config.log_level)

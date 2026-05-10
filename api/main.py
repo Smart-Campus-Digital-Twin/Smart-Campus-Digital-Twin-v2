@@ -17,26 +17,24 @@ Shutdown:
 
 from __future__ import annotations
 
-import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from shared.logging_config import get_logger
 from api.clients import InfluxAPIClient, PostgresClient, RedisCache
-from api.config import config as legacy_config
 from api.core.config import settings
 from api.core.middleware import logging_middleware, setup_rate_limiter
 from api.core.security import verify_auth_config
 from api.db.influx import InfluxDashboardClient
 from api.db.postgres import create_engine, dispose_engine
 from api.dependencies import set_clients
-from api.routers import alerts, buildings, campus, health, metrics, reports, predictions
+from api.routers import alerts, buildings, campus, health, metrics, predictions, reports
 from api.routers import rooms as rooms_router
 from api.ws import handlers as ws_handlers
 from api.ws.hub import hub
+from shared.logging_config import get_logger
 
 logger = get_logger("api", settings.log_level)
 
@@ -117,7 +115,7 @@ app.include_router(ws_handlers.router)      # WS /ws/buildings/{id}
 # Legacy routers — retained for backwards-compat with existing integrations
 app.include_router(metrics.router)
 app.include_router(predictions.router)
-try:
+import contextlib
+
+with contextlib.suppress(Exception):
     app.include_router(reports.router)
-except Exception:
-    pass  # reports router optional

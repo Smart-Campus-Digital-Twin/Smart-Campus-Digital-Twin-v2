@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 import psycopg2
 import psycopg2.extensions
 
-
 _CONNECT_TIMEOUT_S = 5
 
 

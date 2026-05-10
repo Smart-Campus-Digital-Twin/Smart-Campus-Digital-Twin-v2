@@ -15,8 +15,6 @@ from __future__ import annotations
 import json
 import logging
 
-from pydantic import ValidationError
-
 from shared.schemas import KafkaMessage, SensorReading
 
 logger = logging.getLogger(__name__)

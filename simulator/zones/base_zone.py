@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import random
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List, Optional, Set
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 from simulator.sensors.occupancy import OccupancySensor
 
@@ -32,8 +32,8 @@ class ZoneContext:
     day_of_week: int                 # 0=Monday ... 6=Sunday
     is_holiday: bool                 # Sri Lanka public holiday
     academic_day: AcademicDay        # From AcademicCalendar (congestion, activity type)
-    active_venue_fill:  Dict[str, float]  # From EventCalendar (events override)
-    active_event_types: FrozenSet[str]   # Event types active this tick
+    active_venue_fill:  dict[str, float]  # From EventCalendar (events override)
+    active_event_types: frozenset[str]   # Event types active this tick
     building_id: str                     # Current building
     room_id: str                         # Current room
 
@@ -76,7 +76,7 @@ class BaseZone(ABC):
         self.floor = room.floor
         self.room_type = room.room_type
         self.capacity = room.capacity
-        self._sensors: List[BaseSensor] = []
+        self._sensors: list[BaseSensor] = []
         self._create_sensors()
 
     @abstractmethod
@@ -93,9 +93,8 @@ class BaseZone(ABC):
         Default: temperature, occupancy, energy for most zones.
         """
         # Import here to avoid circular imports
-        from simulator.sensors.temperature import TemperatureSensor
         from simulator.sensors.energy import EnergySensor
-        from simulator.sensors.occupancy import OccupancySensor
+        from simulator.sensors.temperature import TemperatureSensor
 
         for sensor_type in self.room.sensors:
             kwargs = dict(
@@ -124,11 +123,11 @@ class BaseZone(ABC):
             self._sensors.append(sensor)
 
     @property
-    def sensors(self) -> List[BaseSensor]:
+    def sensors(self) -> list[BaseSensor]:
         """Return all sensors in this zone."""
         return self._sensors
 
-    def get_occupancy_sensor(self) -> Optional[Any]:
+    def get_occupancy_sensor(self) -> Any | None:
         """Return the occupancy sensor if present."""
         for s in self._sensors:
             if s.sensor_type == "occupancy":
@@ -141,7 +140,7 @@ class BaseZone(ABC):
 # When a large event is active at one venue, non-venue buildings see a drain
 # (people leave classrooms for the career fair, etc.) or a boost (canteen gets
 # more traffic from event visitors).  Factors compound when multiple events run.
-_EVENT_CROWD_DRAIN: Dict[str, Dict[str, float]] = {
+_EVENT_CROWD_DRAIN: dict[str, dict[str, float]] = {
     "career_fair":  {"classroom": 0.80, "lab": 0.85, "library": 0.90, "canteen": 1.10},
     "symposium":    {"classroom": 0.90, "lab": 0.90, "canteen": 1.05},
     "food_festival":{"classroom": 0.95, "library": 0.88, "office": 0.95},
@@ -167,7 +166,7 @@ class ZoneOccupancySensor(OccupancySensor):
         """Delegate to zone's logic."""
         return self._zone._target_ratio(ctx)
 
-    def _sample(self, context: Dict[str, Any]) -> int:
+    def _sample(self, context: dict[str, Any]) -> int:
         # Convert dict context to ZoneContext
         from simulator.campus.academic_calendar import calendar
 
@@ -208,9 +207,8 @@ class ZoneOccupancySensor(OccupancySensor):
                 ratio *= drain
 
         # Optional evening tutorial / club event (classrooms & labs only)
-        if not zone_ctx.is_weekend and self.room_type in ("classroom", "lab"):
-            if 17.25 <= hour < 21.0:
-                ratio = self._apply_evening_event(hour, ratio)
+        if not zone_ctx.is_weekend and self.room_type in ("classroom", "lab") and (17.25 <= hour < 21.0):
+            ratio = self._apply_evening_event(hour, ratio)
 
         return self._apply_flow(ratio)
 

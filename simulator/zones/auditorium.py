@@ -11,8 +11,9 @@ Key patterns:
 
 import random
 
-from .base_zone import BaseZone, ZoneContext
 from simulator.campus.schedule import is_during_lectures as _is_during_lectures
+
+from .base_zone import BaseZone, ZoneContext
 
 
 class AuditoriumZone(BaseZone):

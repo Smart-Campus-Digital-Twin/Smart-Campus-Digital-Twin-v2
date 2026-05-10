@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from api.models.orm import Alert, Room
+from api.models.orm import Alert
 
 
 class AlertRepo:
@@ -51,7 +51,7 @@ class AlertRepo:
         await self._s.execute(
             update(Alert)
             .where(Alert.id == alert_id, Alert.resolved == False)  # noqa: E712
-            .values(resolved=True, resolved_at=datetime.now(timezone.utc))
+            .values(resolved=True, resolved_at=datetime.now(UTC))
         )
         await self._s.flush()
         return await self.get(alert_id)

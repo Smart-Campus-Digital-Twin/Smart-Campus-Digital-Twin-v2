@@ -19,7 +19,7 @@ import asyncio
 import logging
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import partial
 
 import pandas as pd
@@ -65,7 +65,7 @@ def _validate_window(window: str) -> str:
 
 
 def _utc(dt: datetime) -> str:
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class InfluxDashboardClient:

@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import logging
 
-
 _STANDARD_LOG_ATTRS = frozenset({
     "args", "created", "exc_info", "exc_text", "filename", "funcName",
     "id", "levelname", "levelno", "lineno", "message", "module", "msecs",

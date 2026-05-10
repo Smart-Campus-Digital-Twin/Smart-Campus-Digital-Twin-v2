@@ -8,17 +8,16 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.security import TokenClaims, assert_building_access, get_current_user
 from api.db.influx import InfluxDashboardClient
 from api.db.postgres import session_dep
 from api.db.repos.room import RoomRepo
-from api.models.schemas import SensorHistoryPoint, SensorReading, FieldReading
-from api.ws.hub import _field_status, _unit_for, _EMISSIVE
+from api.models.schemas import FieldReading, SensorHistoryPoint, SensorReading
+from api.ws.hub import _EMISSIVE, _field_status, _unit_for
 
 router = APIRouter(prefix="/buildings/{building_id}/rooms", tags=["Rooms"])
 

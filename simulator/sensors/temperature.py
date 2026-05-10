@@ -46,10 +46,11 @@ Indoor temperature sensor — Moratuwa, Sri Lanka tropical campus model.
 
 import math
 import random
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
+
+from simulator.config import config
 
 from .base import BaseSensor
-from simulator.config import config
 
 _REF_INTERVAL = 5.0   # seconds — coefficients below are calibrated for this
 
@@ -75,7 +76,7 @@ def _outdoor_ambient(hour: float) -> float:
 # (setpoint, occ_gain, equip_gain, hvac_start, hvac_end, clamp_lo, clamp_hi)
 # setpoint = None  →  no central HVAC; room tracks outdoor ambient.
 
-_ZP: Dict[str, Tuple] = {
+_ZP: dict[str, tuple] = {
     "classroom":  (23.5, 2.0, 0.0,  7.5,  18.0, 20.0, 32.0),
     "lab":        (23.5, 1.5, 1.5,  7.5,  18.0, 20.0, 34.0),
     "office":     (23.0, 1.0, 0.5,  7.5,  17.5, 20.0, 32.0),
@@ -91,7 +92,7 @@ _DEFAULT_PROFILE = _ZP["classroom"]
 
 # ── Building-specific heat offsets (°C) ──────────────────────────────────────
 
-_BUILDING_HEAT: Dict[str, float] = {
+_BUILDING_HEAT: dict[str, float] = {
     "dept-chemical":   2.5,
     "dept-material":   2.0,
     "dept-mechanical": 1.5,
@@ -122,11 +123,11 @@ class TemperatureSensor(BaseSensor):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         profile = _ZP.get(self.room_type, _DEFAULT_PROFILE)
-        sp: Optional[float] = profile[0]
+        sp: float | None = profile[0]
         self._prev: float = sp if sp is not None else _outdoor_ambient(12.0)
         self._hvac_on: bool = False   # thermostat state (hysteresis)
 
-    def _sample(self, context: Dict[str, Any]) -> float:
+    def _sample(self, context: dict[str, Any]) -> float:
         hour: float = context.get("hour", 12.0)
         occ:  float = context.get("occupancy_ratio", 0.0)
 

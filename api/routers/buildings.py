@@ -13,8 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.core.security import TokenClaims, assert_building_access, get_current_user
 from api.db.postgres import session_dep
 from api.db.repos.building import BuildingRepo
-from api.db.repos.room import RoomRepo
-from api.models.schemas import BuildingOut, BuildingWithRoomsOut, BuildingSummary, RoomOut
+from api.models.schemas import BuildingOut, BuildingSummary, BuildingWithRoomsOut, RoomOut
 
 router = APIRouter(prefix="/buildings", tags=["Buildings"])
 
@@ -68,8 +67,8 @@ async def building_summary(
 ) -> BuildingSummary:
     assert_building_access(claims, building_id)
     from api.db.repos.alert import AlertRepo
-    from api.routers.rooms import _get_influx
     from api.models.schemas import FloorSummary
+    from api.routers.rooms import _get_influx
 
     repo = BuildingRepo(session)
     building = await repo.get_with_rooms(building_id)

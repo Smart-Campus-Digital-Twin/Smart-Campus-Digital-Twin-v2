@@ -10,8 +10,9 @@ Key patterns:
   - During breaks/IT: higher occupancy (students not in class)
 """
 
-from .base_zone import BaseZone, ZoneContext
 from simulator.campus.schedule import hostel_ratio as _hostel_ratio
+
+from .base_zone import BaseZone, ZoneContext
 
 
 class HostelZone(BaseZone):

@@ -76,7 +76,6 @@ class PgWriter:
         from datetime import datetime
         detected_at = anomaly.get("detected_at")
         if isinstance(detected_at, str):
-            from datetime import timezone
             detected_at = datetime.fromisoformat(detected_at)
 
         async with self._pool.acquire() as conn:

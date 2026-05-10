@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 
 @dataclass
@@ -9,14 +8,14 @@ class Room:
     floor: int
     room_type: str   # classroom | lab | office | canteen | auditorium | hostel | outdoor | library | server_room
     capacity: int
-    sensors: List[str] = field(default_factory=list)
+    sensors: list[str] = field(default_factory=list)
 
 
 @dataclass
 class Building:
     building_id: str
     name: str
-    rooms: List[Room] = field(default_factory=list)
+    rooms: list[Room] = field(default_factory=list)
 
 
 # Sensor bundles
@@ -25,7 +24,7 @@ OUTDOOR    = ["occupancy"]                              # open-air spaces
 SERVER     = ["temperature", "energy"]                  # server rooms (no human occupancy)
 
 
-def _room(bld_id: str, floor: int, suffix: str, room_type: str, capacity: int, sensors: List[str]) -> Room:
+def _room(bld_id: str, floor: int, suffix: str, room_type: str, capacity: int, sensors: list[str]) -> Room:
     return Room(f"{bld_id}-f{floor}-{suffix}", bld_id, floor, room_type, capacity, sensors)
 
 
@@ -38,14 +37,14 @@ def _acad_floors(
     n_cls: int = 2,
     n_labs: int = 1,
     office_cap: int = 12,
-) -> List[Room]:
+) -> list[Room]:
     """
     Academic block generator.
 
     Per floor: n_cls classrooms + 1 office + (n_labs labs if has_lab).
     Classroom suffixes: cls-a, cls-b, …  Lab suffixes: lab (single) or lab-1, lab-2, …
     """
-    rooms: List[Room] = []
+    rooms: list[Room] = []
     for f in range(1, n_floors + 1):
         for ci in range(n_cls):
             suffix = f"cls-{chr(ord('a') + ci)}"
@@ -75,7 +74,7 @@ class CampusTopology:
     """
 
     def __init__(self) -> None:
-        self._buildings: Dict[str, Building] = {}
+        self._buildings: dict[str, Building] = {}
         self._build()
 
     # ------------------------------------------------------------------
@@ -280,11 +279,11 @@ class CampusTopology:
 
     # ------------------------------------------------------------------
     @property
-    def buildings(self) -> Dict[str, Building]:
+    def buildings(self) -> dict[str, Building]:
         return self._buildings
 
-    def all_rooms(self) -> List[Room]:
+    def all_rooms(self) -> list[Room]:
         return [r for bld in self._buildings.values() for r in bld.rooms]
 
-    def rooms_with_sensor(self, sensor_type: str) -> List[Room]:
+    def rooms_with_sensor(self, sensor_type: str) -> list[Room]:
         return [r for r in self.all_rooms() if sensor_type in r.sensors]

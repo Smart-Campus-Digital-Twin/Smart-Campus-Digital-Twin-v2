@@ -1,6 +1,5 @@
-import math
 import random
-from typing import Dict, Any
+from typing import Any
 
 from .base import BaseSensor
 
@@ -20,7 +19,7 @@ class EnergySensor(BaseSensor):
     """
 
     # Per room-type base loads (W)
-    _BASE: Dict[str, float] = {
+    _BASE: dict[str, float] = {
         "classroom":   80.0,
         "lab":        120.0,   # extra equipment
         "office":      60.0,
@@ -45,7 +44,7 @@ class EnergySensor(BaseSensor):
 
     # Per room-type night-standby loads (W) — canteen refrigeration, lab
     # equipment standby, and library emergency lighting differ significantly.
-    _STANDBY: Dict[str, float] = {
+    _STANDBY: dict[str, float] = {
         "classroom":    45.0,   # security lighting + standby A/C compressor
         "lab":          60.0,   # equipment standby, ventilation, fume hoods
         "office":       35.0,   # PCs on standby, corridor lights
@@ -58,7 +57,7 @@ class EnergySensor(BaseSensor):
         "default":      45.0,
     }
 
-    def _sample(self, context: Dict[str, Any]) -> float:
+    def _sample(self, context: dict[str, Any]) -> float:
         hour: float = context.get("hour", 12.0)
         occ:  float = context.get("occupancy_ratio", 0.0)
 

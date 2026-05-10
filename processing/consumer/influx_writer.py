@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 
+from influxdb_client import Point
 from influxdb_client.client.influxdb_client_async import InfluxDBClientAsync
 from influxdb_client.client.write_api_async import WriteApiAsync
 from influxdb_client.domain.write_precision import WritePrecision
-from influxdb_client import Point
 
 logger = logging.getLogger("ml-consumer.influx")
 

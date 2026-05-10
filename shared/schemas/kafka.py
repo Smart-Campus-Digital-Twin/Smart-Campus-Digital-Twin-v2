@@ -23,7 +23,7 @@ Example wire format (stored in Kafka bytes):
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field
 
@@ -43,7 +43,7 @@ class KafkaMessage(BaseModel):
         description="UUID v4 — deduplication key for Flink exactly-once sinks",
     )
     produced_at: datetime      = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="UTC wall-clock when bridge forwarded this message to Kafka",
     )
     mqtt_topic:  str           = Field(
@@ -56,5 +56,5 @@ class KafkaMessage(BaseModel):
         return self.model_dump_json()
 
     @classmethod
-    def from_json(cls, raw: str | bytes) -> "KafkaMessage":
+    def from_json(cls, raw: str | bytes) -> KafkaMessage:
         return cls.model_validate_json(raw)

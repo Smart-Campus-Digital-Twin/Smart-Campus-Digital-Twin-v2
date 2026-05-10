@@ -10,9 +10,9 @@ Mock hierarchy:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import AsyncIterator
-from unittest.mock import AsyncMock, MagicMock, patch
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pandas as pd
 import pytest
@@ -21,7 +21,6 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from api.models.orm import Base, Building, Room
-from api.models.schemas import FieldReading, SensorReading
 
 # ---------------------------------------------------------------------------
 # Constants reused across tests
@@ -75,9 +74,9 @@ def mock_influx():
     client = MagicMock()
     df = pd.DataFrame([
         {"room_id": str(ROOM_ID), "building_id": str(BUILDING_ID),
-         "floor": 1, "sensor_type": "temperature", "_value": 23.5, "_time": datetime.now(timezone.utc)},
+         "floor": 1, "sensor_type": "temperature", "_value": 23.5, "_time": datetime.now(UTC)},
         {"room_id": str(ROOM_ID), "building_id": str(BUILDING_ID),
-         "floor": 1, "sensor_type": "humidity", "_value": 55.0, "_time": datetime.now(timezone.utc)},
+         "floor": 1, "sensor_type": "humidity", "_value": 55.0, "_time": datetime.now(UTC)},
     ])
     client.latest_for_building = AsyncMock(return_value=df)
     client.latest_for_room     = AsyncMock(return_value=df)
@@ -100,10 +99,10 @@ async def client(mock_influx, sqlite_session):
         iat=1000000000,
     )
 
-    from api.main import app
-    from api.db.postgres import session_dep
-    from api.core.security import get_current_user
     import api.routers.rooms as rooms_mod
+    from api.core.security import get_current_user
+    from api.db.postgres import session_dep
+    from api.main import app
 
     rooms_mod.set_influx_client(mock_influx)
 

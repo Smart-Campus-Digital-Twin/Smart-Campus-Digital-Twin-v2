@@ -12,10 +12,8 @@ import logging
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-
-from api.config import settings
 
 log = logging.getLogger(__name__)
 
@@ -63,7 +61,7 @@ async def prediction_service_health():
         raise HTTPException(
             status_code=503,
             detail=f"Prediction service unavailable: {exc}",
-        )
+        ) from exc
 
 
 @router.post("/congestion", response_model=PredictionResponse)
@@ -85,13 +83,13 @@ async def predict_congestion(req: CongestionPredictionRequest):
         raise HTTPException(
             status_code=exc.response.status_code,
             detail=exc.response.json().get("detail", "Prediction failed"),
-        )
+        ) from exc
     except Exception as exc:
         log.error("Failed to call prediction service: %s", exc)
         raise HTTPException(
             status_code=500,
             detail=f"Prediction service error: {exc}",
-        )
+        ) from exc
 
 
 @router.get("/models", response_model=ModelInfo)
@@ -107,4 +105,4 @@ async def list_models():
         raise HTTPException(
             status_code=503,
             detail=f"Could not fetch models: {exc}",
-        )
+        ) from exc

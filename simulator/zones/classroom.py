@@ -9,15 +9,19 @@ Key patterns:
   - Weekend classes for IT and Architecture (dept-design, faculty-it)
 """
 
-import random
 from typing import TYPE_CHECKING
 
-from .base_zone import BaseZone, ZoneContext
 from simulator.campus.schedule import (
-    lecture_ratio as _lecture_ratio,
-    exam_ratio as _exam_ratio,
     WEEKEND_ACTIVE_BUILDINGS,
 )
+from simulator.campus.schedule import (
+    exam_ratio as _exam_ratio,
+)
+from simulator.campus.schedule import (
+    lecture_ratio as _lecture_ratio,
+)
+
+from .base_zone import BaseZone, ZoneContext
 
 if TYPE_CHECKING:
     from simulator.campus.topology import Room
@@ -54,12 +58,7 @@ class ClassroomZone(BaseZone):
             return 0.0
 
         # Normal academic day
-        if ctx.is_exam_period:
-            # Use exam slot pattern
-            base = _exam_ratio(hour)
-        else:
-            # Use lecture slot pattern
-            base = _lecture_ratio(hour)
+        base = _exam_ratio(hour) if ctx.is_exam_period else _lecture_ratio(hour)
 
         # Scale by academic calendar (TUA, reading break, etc.)
         return base * ctx.lecture_scale

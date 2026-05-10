@@ -11,8 +11,9 @@ Key patterns:
   - Scaled by academic calendar congestion
 """
 
-from .base_zone import BaseZone, ZoneContext
 from simulator.campus.schedule import canteen_ratio as _canteen_ratio
+
+from .base_zone import BaseZone, ZoneContext
 
 
 class CanteenZone(BaseZone):

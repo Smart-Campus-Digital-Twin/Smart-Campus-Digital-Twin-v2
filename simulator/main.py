@@ -19,38 +19,35 @@ Architecture
 """
 from __future__ import annotations
 
-import asyncio
-import signal
-import time
-from datetime import date as dt_date, datetime
-from typing import Dict, List, Optional, Tuple
-from zoneinfo import ZoneInfo
-from fastapi import FastAPI, BackgroundTasks, Request
-from fastapi.responses import HTMLResponse
-import uvicorn
+import os
 import threading
-from datetime import date as dt_date, datetime
-from typing import Dict, List, Optional, Tuple
+import time
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
+import uvicorn
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+
 from shared.logging_config import get_logger
-from simulator.campus.academic_calendar import AcademicCalendar, calendar as academic_calendar
+from simulator.anomaly_injector import inject_if_enabled
+from simulator.campus.academic_calendar import AcademicCalendar
+from simulator.campus.academic_calendar import calendar as academic_calendar
 from simulator.campus.events import EventCalendar
 from simulator.campus.holidays import is_holiday
 from simulator.campus.topology import CampusTopology, Room
 from simulator.config import config
 from simulator.publisher import MQTTPublisher
 from simulator.sensors.base import BaseSensor
-from simulator.anomaly_injector import inject_if_enabled
 from simulator.sensors.occupancy import OccupancySensor
 from simulator.zones import BaseZone, get_zone_for_room_type
 
 logger = get_logger("simulator.main", config.log_level)
 
 
-def _build_zones(topology: CampusTopology) -> List[Tuple[Room, BaseZone]]:
+def _build_zones(topology: CampusTopology) -> list[tuple[Room, BaseZone]]:
     """Create Zone instances for each room based on room_type."""
-    zones: List[Tuple[Room, BaseZone]] = []
+    zones: list[tuple[Room, BaseZone]] = []
     for room in topology.all_rooms():
         zone_class = get_zone_for_room_type(room.room_type)
         zone = zone_class(room)
@@ -62,7 +59,7 @@ def _make_context(
     now: datetime,
     event_calendar: EventCalendar,
     academic_calendar: AcademicCalendar,
-) -> Dict:
+) -> dict:
     """Build context dict with time, events, and academic calendar state."""
     hour = now.hour + now.minute / 60.0
     today = now.date()
@@ -100,15 +97,10 @@ def main_loop():
     zones = _build_zones(topology)
 
     # Collect all sensors from all zones
-    all_sensors: List[Tuple[Room, BaseSensor]] = []
+    all_sensors: list[tuple[Room, BaseSensor]] = []
     for room, zone in zones:
         for sensor in zone.sensors:
             all_sensors.append((room, sensor))
-
-    # Map room_id to zone for quick lookup
-    room_zones: Dict[str, BaseZone] = {
-        room.room_id: zone for room, zone in zones
-    }
 
     reading_count = 0
 
@@ -137,8 +129,8 @@ def main_loop():
 
         # Pass 1: occupancy sensors only — advance state once, cache both the
         # ratio (for temperature/energy) and the SensorReading (for publishing).
-        occ_readings:  Dict[str, float]  = {}
-        occ_published: Dict[str, object] = {}
+        occ_readings:  dict[str, float]  = {}
+        occ_published: dict[str, object] = {}
         for room, sensor in all_sensors:
             if sensor.sensor_type == "occupancy" and isinstance(sensor, OccupancySensor):
                 r = sensor.read(ctx)

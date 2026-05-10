@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from api.clients import InfluxAPIClient, PostgresClient, RedisCache
@@ -214,7 +214,7 @@ async def campus_zones(
         total_capacity = capacity_map.get(bld_id, 1)  # avoid division by zero
         # Calculate occupancy as percentage
         occupancy_pct = int(round((total_occ_count / total_capacity) * 100)) if total_capacity > 0 else 0
-        
+
         total_nrg = sum(nrgs) if nrgs else _DEFAULT["energy"]
         # convert W → kW if simulator emits watts (>500 is clearly watts)
         energy_kw = round(total_nrg / 1000.0 if total_nrg > 500 else total_nrg, 1)
@@ -235,7 +235,7 @@ async def campus_zones(
 
     # Cache for 5 seconds
     await redis.set(cache_key, [z.model_dump() for z in zones], ttl_seconds=5)
-    
+
     return zones
 
 

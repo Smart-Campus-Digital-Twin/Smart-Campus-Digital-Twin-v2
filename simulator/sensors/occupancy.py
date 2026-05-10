@@ -11,10 +11,9 @@ Global rules:
 """
 
 import random
-from typing import Any, Dict
+from typing import Any
 
 from .base import BaseSensor
-
 
 # ── Sensor class ──────────────────────────────────────────────────────────────
 
@@ -49,7 +48,7 @@ class OccupancySensor(BaseSensor):
         self.capacity = capacity
         self._count: int = 0
 
-    def _target_ratio(self, context: Dict[str, Any]) -> float:
+    def _target_ratio(self, context: dict[str, Any]) -> float:
         """
         Return target occupancy ratio (0.0-1.0).
 
@@ -77,10 +76,7 @@ class OccupancySensor(BaseSensor):
 
         abs_diff = abs(diff)
         # Burst: allow larger steps only when gap is significant
-        if abs_diff > self.capacity * 0.10:
-            step = max(1, min(abs_diff, self.capacity // 20))
-        else:
-            step = 1
+        step = max(1, min(abs_diff, self.capacity // 20)) if abs_diff > self.capacity * 0.1 else 1
 
         prob = min(0.92, abs_diff / max(1, self.capacity * 1.5))
         if random.random() < prob:
@@ -93,6 +89,6 @@ class OccupancySensor(BaseSensor):
 
     # ── Sensor tick ───────────────────────────────────────────────────────────
 
-    def _sample(self, context: Dict[str, Any]) -> int:
+    def _sample(self, context: dict[str, Any]) -> int:
         ratio = self._target_ratio(context)
         return self._apply_flow(ratio)

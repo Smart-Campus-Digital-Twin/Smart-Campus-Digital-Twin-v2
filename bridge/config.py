@@ -56,9 +56,8 @@ class BridgeConfig(BaseSettings):
     @field_validator("kafka_sasl_username", "kafka_sasl_password")
     @classmethod
     def _validate_kafka_sasl(cls, v: str, info) -> str:
-        if info.data.get("kafka_security_protocol", "").upper() in ("SASL_PLAINTEXT", "SASL_SSL"):
-            if not v or v == "changeme":
-                raise ValueError("Kafka SASL credentials required when SASL security protocol is used")
+        if info.data.get("kafka_security_protocol", "").upper() in ("SASL_PLAINTEXT", "SASL_SSL") and (not v or v == "changeme"):
+            raise ValueError("Kafka SASL credentials required when SASL security protocol is used")
         return v
 
 

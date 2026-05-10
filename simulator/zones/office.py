@@ -11,8 +11,9 @@ Key patterns:
   - Scaled minimally by academic calendar
 """
 
-from .base_zone import BaseZone, ZoneContext
 from simulator.campus.schedule import office_ratio as _office_ratio
+
+from .base_zone import BaseZone, ZoneContext
 
 
 class OfficeZone(BaseZone):

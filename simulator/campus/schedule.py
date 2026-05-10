@@ -22,10 +22,9 @@ The canteen tea spikes (10:10–10:30 and 15:10–15:30) align with these
 drain windows, which is why both can be non-zero simultaneously.
 """
 
-from typing import FrozenSet, List, Tuple
 
 # Campus-wide lecture slots (start, end) in fractional 24-h hours
-LECTURE_SLOTS: List[Tuple[float, float]] = [
+LECTURE_SLOTS: list[tuple[float, float]] = [
     (8  + 15/60, 10 + 10/60),  # 08:15–10:10  (slot 1 — ends early)
     (10 + 15/60, 12 + 15/60),  # 10:15–12:15  (slot 2)
     (13 + 15/60, 15 + 10/60),  # 13:15–15:10  (slot 3 — ends early)
@@ -33,7 +32,7 @@ LECTURE_SLOTS: List[Tuple[float, float]] = [
 ]
 
 # Written / design exam session slots
-EXAM_SLOTS: List[Tuple[float, float]] = [
+EXAM_SLOTS: list[tuple[float, float]] = [
     (8.0,  11.0),   # morning exam session
     (13.0, 16.0),   # afternoon exam session
 ]
@@ -42,10 +41,10 @@ PRE_WINDOW:  float = 10 / 60   # ramp-up window before a slot  (hours)
 POST_WINDOW: float =  5 / 60   # drain window after a slot (hours)
 
 # Buildings where Saturday/Sunday classes run (IT and Architecture)
-WEEKEND_ACTIVE_BUILDINGS: FrozenSet[str] = frozenset({"faculty-it", "dept-design"})
+WEEKEND_ACTIVE_BUILDINGS: frozenset[str] = frozenset({"faculty-it", "dept-design"})
 
 # Canteen busy periods: (start, end, peak_ratio)
-CANTEEN_PERIODS: List[Tuple[float, float, float]] = [
+CANTEEN_PERIODS: list[tuple[float, float, float]] = [
     (7.5,         8  + 15/60,   0.95),  # 07:30–08:15 breakfast rush
     (10 + 10/60,  10 + 30/60,   0.65),  # 10:10–10:30 session-change tea spike
     (12 + 15/60,  13 + 15/60,   0.98),  # 12:15–13:15 lunch peak

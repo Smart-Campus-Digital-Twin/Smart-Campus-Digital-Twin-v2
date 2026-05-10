@@ -14,6 +14,7 @@ import os
 from typing import Any
 
 import redis.asyncio as redis
+
 from shared.logging_config import get_logger
 
 logger = get_logger(__name__)

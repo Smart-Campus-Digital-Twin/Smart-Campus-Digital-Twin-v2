@@ -23,13 +23,12 @@ Example wire format:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from .sensor import SensorType
-
+from .sensor import SensorReading, SensorType
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -83,7 +82,7 @@ class AnomalyEvent(BaseModel):
 
     anomaly_id:  str         = Field(default_factory=lambda: str(uuid.uuid4()))
     detected_at: datetime    = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
     sensor_id:   str
     building_id: str
@@ -100,7 +99,7 @@ class AnomalyEvent(BaseModel):
         return self.model_dump_json()
 
     @classmethod
-    def from_json(cls, raw: str | bytes) -> "AnomalyEvent":
+    def from_json(cls, raw: str | bytes) -> AnomalyEvent:
         return cls.model_validate_json(raw)
 
     def to_line_protocol(self, measurement: str = "anomalies") -> str:
@@ -128,16 +127,16 @@ class AnomalyEvent(BaseModel):
     @classmethod
     def threshold_breach(
         cls,
-        reading: "SensorReading",  # type: ignore[name-defined]
+        reading: SensorReading,  # type: ignore[name-defined]
         *,
         threshold: float,
         high: bool,
         severity: Severity | None = None,
-    ) -> "AnomalyEvent":
+    ) -> AnomalyEvent:
         atype = AnomalyType.THRESHOLD_HIGH if high else AnomalyType.THRESHOLD_LOW
         direction = "exceeds" if high else "falls below"
         return cls(
-            detected_at = datetime.fromtimestamp(reading.ts / 1000, tz=timezone.utc),
+            detected_at = datetime.fromtimestamp(reading.ts / 1000, tz=UTC),
             sensor_id   = reading.sensor_id,
             building_id = reading.building_id,
             floor       = reading.floor,
@@ -156,13 +155,13 @@ class AnomalyEvent(BaseModel):
     @classmethod
     def capacity_breach(
         cls,
-        reading: "SensorReading",  # type: ignore[name-defined]
+        reading: SensorReading,  # type: ignore[name-defined]
         *,
         room_capacity: int,
-    ) -> "AnomalyEvent":
+    ) -> AnomalyEvent:
         threshold = room_capacity * 1.05
         return cls(
-            detected_at  = datetime.fromtimestamp(reading.ts / 1000, tz=timezone.utc),
+            detected_at  = datetime.fromtimestamp(reading.ts / 1000, tz=UTC),
             sensor_id    = reading.sensor_id,
             building_id  = reading.building_id,
             floor        = reading.floor,
@@ -181,14 +180,14 @@ class AnomalyEvent(BaseModel):
     @classmethod
     def spike(
         cls,
-        reading: "SensorReading",  # type: ignore[name-defined]
+        reading: SensorReading,  # type: ignore[name-defined]
         *,
         rolling_avg: float,
         multiplier: float,
-    ) -> "AnomalyEvent":
+    ) -> AnomalyEvent:
         threshold = rolling_avg * multiplier
         return cls(
-            detected_at  = datetime.fromtimestamp(reading.ts / 1000, tz=timezone.utc),
+            detected_at  = datetime.fromtimestamp(reading.ts / 1000, tz=UTC),
             sensor_id    = reading.sensor_id,
             building_id  = reading.building_id,
             floor        = reading.floor,

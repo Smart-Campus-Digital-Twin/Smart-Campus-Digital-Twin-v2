@@ -1,8 +1,8 @@
 import json
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any
 
-SENSOR_UNITS: Dict[str, str] = {
+SENSOR_UNITS: dict[str, str] = {
     "temperature": "°C",
     "occupancy":   "count",
     "energy":      "W",
@@ -20,7 +20,7 @@ class SensorReading:
     unit:         str
     timestamp_ms: int
     quality:      float = 1.0
-    metadata:     Dict[str, Any] = field(default_factory=dict)
+    metadata:     dict[str, Any] = field(default_factory=dict)
 
     @property
     def mqtt_topic(self) -> str:

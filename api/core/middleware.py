@@ -8,10 +8,11 @@ Custom ASGI middleware:
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import time
 import uuid
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import FastAPI, Request, Response
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -73,8 +74,6 @@ async def logging_middleware(request: Request, call_next: Callable) -> Response:
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    try:
+    with contextlib.suppress(KeyError):
         del response.headers["server"]
-    except KeyError:
-        pass
     return response

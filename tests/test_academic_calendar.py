@@ -8,12 +8,10 @@ from unittest.mock import patch
 import pytest
 
 from simulator.campus.academic_calendar import (
+    _SPECIAL_PERIODS,
     AcademicCalendar,
     AcademicDay,
     ActivityType,
-    _FALLBACK_MONTHLY,
-    _MONTHLY_BASELINE,
-    _SPECIAL_PERIODS,
 )
 
 

@@ -28,7 +28,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
@@ -110,7 +109,7 @@ class SensorReading(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def unit_matches_sensor_type(self) -> "SensorReading":
+    def unit_matches_sensor_type(self) -> SensorReading:
         expected = CANONICAL_UNIT.get(self.sensor_type)
         if expected and self.unit != expected:
             raise ValueError(
@@ -127,7 +126,7 @@ class SensorReading(BaseModel):
         return self.model_dump_json()
 
     @classmethod
-    def from_json(cls, raw: str | bytes) -> "SensorReading":
+    def from_json(cls, raw: str | bytes) -> SensorReading:
         return cls.model_validate_json(raw)
 
     # ------------------------------------------------------------------
@@ -199,7 +198,7 @@ class SensorReading(BaseModel):
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_simulator(cls, raw: dict[str, Any]) -> "SensorReading":
+    def from_simulator(cls, raw: dict[str, Any]) -> SensorReading:
         """
         Convert the simulator's raw dict (shared.models.SensorReading.to_json)
         to the canonical pipeline schema.

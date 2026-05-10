@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -131,8 +129,8 @@ def test_library_closed_hours_near_zero():
 # ---------------------------------------------------------------------------
 
 def test_server_room_has_no_occupancy_sensors():
-    from simulator.zones.server_room import ServerRoomZone
     from simulator.sensors.occupancy import OccupancySensor
+    from simulator.zones.server_room import ServerRoomZone
     zone = ServerRoomZone(_room("server_room"))
     occ_sensors = [s for s in zone.sensors if isinstance(s, OccupancySensor)]
     assert len(occ_sensors) == 0

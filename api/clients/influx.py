@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import partial
 
 import pandas as pd
@@ -38,7 +38,7 @@ def _validate_tag(value: str, name: str) -> str:
 
 def _utc(dt: datetime) -> str:
     """Format a datetime as a UTC RFC-3339 string for Flux range literals."""
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class InfluxAPIClient:

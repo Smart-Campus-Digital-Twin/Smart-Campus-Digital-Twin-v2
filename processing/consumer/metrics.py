@@ -5,7 +5,6 @@ Exposes counters on :9091/metrics.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections import defaultdict
 

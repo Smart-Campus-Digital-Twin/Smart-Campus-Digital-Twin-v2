@@ -3,10 +3,10 @@ import random
 import sys
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from shared.models import SensorReading, SENSOR_UNITS
+from shared.models import SENSOR_UNITS, SensorReading
 
 # Per-tick failure and recovery probabilities.
 # At a 5-second interval:
@@ -35,14 +35,14 @@ class BaseSensor(ABC):
         self.sensor_type = sensor_type
         self.room_type = room_type
         self.unit = SENSOR_UNITS[sensor_type]
-        self._state: Dict[str, Any] = {}
+        self._state: dict[str, Any] = {}
         self._offline: bool = False
 
     @abstractmethod
-    def _sample(self, context: Dict[str, Any]) -> float:
+    def _sample(self, context: dict[str, Any]) -> float:
         """Return the raw sensor value given environmental context."""
 
-    def read(self, context: Dict[str, Any]) -> Optional[SensorReading]:
+    def read(self, context: dict[str, Any]) -> SensorReading | None:
         """
         Generate a SensorReading for the current tick, or None when the
         sensor is offline (simulating intermittent IoT dropout).
@@ -75,7 +75,7 @@ class BaseSensor(ABC):
         """Override to simulate sensor degradation / data-quality flags."""
         return 1.0
 
-    def _metadata(self) -> Dict[str, Any]:
+    def _metadata(self) -> dict[str, Any]:
         return {}
 
     @staticmethod

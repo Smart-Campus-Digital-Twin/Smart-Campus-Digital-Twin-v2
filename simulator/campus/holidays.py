@@ -9,14 +9,13 @@ from __future__ import annotations
 
 import os
 from datetime import date
-from typing import Dict, FrozenSet
 
 import yaml
 
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 
-def _load_holidays() -> Dict[int, FrozenSet[date]]:
+def _load_holidays() -> dict[int, frozenset[date]]:
     path = os.path.join(_DATA_DIR, "holidays.yaml")
     try:
         with open(path, encoding="utf-8") as f:
@@ -28,13 +27,13 @@ def _load_holidays() -> Dict[int, FrozenSet[date]]:
         ) from exc
     if not isinstance(raw, dict):
         raise ValueError(f"holidays.yaml did not parse to a dict: {path}")
-    by_year: Dict[int, FrozenSet[date]] = {}
+    by_year: dict[int, frozenset[date]] = {}
     for year, entries in raw.get("holidays", {}).items():
         by_year[int(year)] = frozenset(date.fromisoformat(e["date"]) for e in entries)
     return by_year
 
 
-_BY_YEAR: Dict[int, FrozenSet[date]] = _load_holidays()
+_BY_YEAR: dict[int, frozenset[date]] = _load_holidays()
 
 
 def is_holiday(d: date) -> bool:
@@ -42,11 +41,11 @@ def is_holiday(d: date) -> bool:
     return d in _BY_YEAR.get(d.year, frozenset())
 
 
-def holidays_for_year(year: int) -> FrozenSet[date]:
+def holidays_for_year(year: int) -> frozenset[date]:
     return _BY_YEAR.get(year, frozenset())
 
 
-def all_holidays() -> FrozenSet[date]:
+def all_holidays() -> frozenset[date]:
     result: set = set()
     for s in _BY_YEAR.values():
         result |= s

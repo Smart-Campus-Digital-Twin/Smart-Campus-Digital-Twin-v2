@@ -16,14 +16,14 @@ same thread and the aiokafka internal buffer stays consistent.
 from __future__ import annotations
 
 import asyncio
-import logging
+import contextlib
 import signal
-import sys
 
 import paho.mqtt.client as mqtt
 from pydantic import ValidationError
 
 from shared.logging_config import get_logger
+
 from .config import config
 from .metrics import metrics, serve_metrics
 from .producer import KafkaProducer
@@ -165,10 +165,8 @@ async def run() -> None:
 
 
 def main() -> None:
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(run())
-    except KeyboardInterrupt:
-        pass
 
 
 if __name__ == "__main__":

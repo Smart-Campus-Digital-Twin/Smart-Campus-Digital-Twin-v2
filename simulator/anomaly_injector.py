@@ -7,7 +7,7 @@ Can be enabled/disabled via environment variable ANOMALY_INJECTION_ENABLED=true.
 
 import os
 import random
-from typing import Any, Dict, Optional
+
 from shared.models import SensorReading
 
 # Enable/disable via environment variable
@@ -108,7 +108,7 @@ class AnomalyInjector:
 
 
 # Global instance
-_injector: Optional[AnomalyInjector] = None
+_injector: AnomalyInjector | None = None
 
 
 def get_injector() -> AnomalyInjector:

@@ -39,8 +39,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from datetime import date
-from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from enum import StrEnum
 
 import yaml
 
@@ -51,7 +50,7 @@ _DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 # ── Activity types ────────────────────────────────────────────────────────────
 
-class ActivityType(str, Enum):
+class ActivityType(StrEnum):
     AW      = "AW"       # Academic Work — full lecture schedule
     AW_OL   = "AW_OL"   # Online lectures — 45 % on campus
     EXAM    = "EXAM"     # Written / design exams — 100 %, concentrated sessions
@@ -67,7 +66,7 @@ class ActivityType(str, Enum):
 
 
 # Fraction of full campus population present for each activity type (weekday)
-ACTIVITY_FRACTION: Dict[ActivityType, float] = {
+ACTIVITY_FRACTION: dict[ActivityType, float] = {
     ActivityType.AW:     1.00,
     ActivityType.AW_OL:  0.45,
     ActivityType.EXAM:   0.95,
@@ -128,7 +127,7 @@ class _Period:
     start:               date
     end:                 date           # inclusive
     activity:            ActivityType
-    congestion_fraction: Optional[float]  # None = use monthly baseline
+    congestion_fraction: float | None  # None = use monthly baseline
 
 
 def _load_academic_calendar():
@@ -144,14 +143,14 @@ def _load_academic_calendar():
     if not isinstance(raw, dict):
         raise ValueError(f"academic_calendar.yaml did not parse to a dict: {path}")
 
-    monthly: Dict[int, Dict[int, float]] = {}
+    monthly: dict[int, dict[int, float]] = {}
     for year, months in raw.get("monthly_baseline", {}).items():
         monthly[int(year)] = {int(m): float(v) for m, v in months.items()}
 
     fallback_val = float(raw.get("fallback_monthly_baseline", 0.90))
-    fallback: Dict[int, float] = {m: fallback_val for m in range(1, 13)}
+    fallback: dict[int, float] = {m: fallback_val for m in range(1, 13)}
 
-    periods: List[_Period] = []
+    periods: list[_Period] = []
     for p in raw.get("special_periods", []):
         periods.append(_Period(
             start=date.fromisoformat(p["start"]),
@@ -181,7 +180,7 @@ class AcademicCalendar:
     """
 
     def __init__(self) -> None:
-        self._cache: Dict[date, AcademicDay] = {}
+        self._cache: dict[date, AcademicDay] = {}
 
     def get_day(self, d: date) -> AcademicDay:
         if d not in self._cache:
