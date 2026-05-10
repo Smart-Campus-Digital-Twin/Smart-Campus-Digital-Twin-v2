@@ -45,6 +45,25 @@ _DEFAULT_CAPACITIES = {"ENG-101": 40}
 @pytest.fixture()
 def detector():
     """Return an AnomalyDetector instance with Flink state mocked out."""
+    import sys
+    from unittest.mock import MagicMock
+    for mod in [
+        "psycopg2",
+        "psycopg2.extras",
+        "psycopg2.extensions",
+        "pyflink",
+        "pyflink.common",
+        "pyflink.datastream",
+        "pyflink.datastream.connectors",
+        "pyflink.datastream.connectors.kafka",
+        "pyflink.datastream.functions",
+        "pyflink.datastream.state",
+    ]:
+        if mod not in sys.modules:
+            sys.modules[mod] = MagicMock()
+            
+    sys.modules["pyflink.datastream.functions"].KeyedProcessFunction = object
+
     # Import the module so it exists as an attribute on processing.flink.jobs
     import processing.flink.jobs.anomaly  # noqa: F401
 
@@ -54,10 +73,8 @@ def detector():
         from processing.flink.jobs.anomaly import AnomalyDetector
         d = AnomalyDetector(_DEFAULT_RULES, _DEFAULT_CAPACITIES)
         # Inject a simple dict-backed mock for the ValueState
-        state_store = {}
         mock_state = MagicMock()
-        mock_state.value.side_effect = lambda: state_store.get("energy_rolling_avg")
-        mock_state.update.side_effect = lambda v: state_store.update({"energy_rolling_avg": v})
+        mock_state.value.return_value = None
         d._energy_avg_state = mock_state
         return d
 
