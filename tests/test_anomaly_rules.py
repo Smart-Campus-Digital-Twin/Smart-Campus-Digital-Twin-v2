@@ -45,6 +45,9 @@ _DEFAULT_CAPACITIES = {"ENG-101": 40}
 @pytest.fixture()
 def detector():
     """Return an AnomalyDetector instance with Flink state mocked out."""
+    # Import the module so it exists as an attribute on processing.flink.jobs
+    import processing.flink.jobs.anomaly
+
     # Patch the Flink state so we do not need a JVM
     with patch("processing.flink.jobs.anomaly.StateTtlConfig"), \
          patch("processing.flink.jobs.anomaly.ValueStateDescriptor"):

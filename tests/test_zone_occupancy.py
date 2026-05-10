@@ -27,14 +27,17 @@ def _academic_day(activity: str = "AW", congestion: float = 1.0, tua: bool = Fal
 def _ctx(hour: float = 10.0, day_of_week: int = 0, is_holiday: bool = False,
          activity: str = "AW", congestion: float = 1.0, tua: bool = False,
          active_venue_fill: dict | None = None, active_event_types: list | None = None):
-    return {
-        "hour":               hour,
-        "day_of_week":        day_of_week,
-        "is_holiday":         is_holiday,
-        "academic_day":       _academic_day(activity, congestion, tua),
-        "active_venue_fill":  active_venue_fill or {},
-        "active_event_types": active_event_types or [],
-    }
+    from simulator.zones.base_zone import ZoneContext
+    return ZoneContext(
+        hour=hour,
+        day_of_week=day_of_week,
+        is_holiday=is_holiday,
+        academic_day=_academic_day(activity, congestion, tua),
+        active_venue_fill=active_venue_fill or {},
+        active_event_types=frozenset(active_event_types or []),
+        building_id="TEST",
+        room_id="TEST-001",
+    )
 
 
 def _room(room_type: str, capacity: int = 60, room_id: str = "TEST-001",

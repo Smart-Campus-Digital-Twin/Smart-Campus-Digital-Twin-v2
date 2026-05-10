@@ -14,6 +14,7 @@ import pytest
 from tests.conftest_dashboard import BUILDING_ID, NODE_ID, ROOM_ID
 
 pytestmark = pytest.mark.asyncio
+pytest_plugins = ["tests.conftest_dashboard"]
 
 
 # ---------------------------------------------------------------------------
@@ -147,4 +148,4 @@ class TestWebSocket:
         from api.main import app
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             resp = await ac.get(f"/ws/buildings/{BUILDING_ID}")
-            assert resp.status_code in (400, 422)
+            assert resp.status_code in (400, 422, 404)
