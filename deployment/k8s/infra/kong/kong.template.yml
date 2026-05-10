@@ -40,6 +40,30 @@ services:
         paths: ["/grafana"]
         strip_path: true
 
+  # ── Simulator UI ─────────────────────────────────────────────────────────
+  - name: simulator-svc
+    url: http://simulator:8002
+    routes:
+      - name: simulator-ui
+        paths: ["/simulator"]
+        strip_path: true
+
+  # ── Mosquitto WebSocket ──────────────────────────────────────────────────
+  - name: mosquitto-ws
+    url: http://mosquitto:9001
+    routes:
+      - name: mqtt-ws
+        paths: ["/mqtt"]
+        strip_path: true
+
+  # ── Frontend ─────────────────────────────────────────────────────────────
+  - name: frontend-svc
+    url: http://frontend:3000
+    routes:
+      - name: frontend-ui
+        paths: ["/"]
+        strip_path: false
+
 plugins:
   # Global rate limiting
   - name: rate-limiting

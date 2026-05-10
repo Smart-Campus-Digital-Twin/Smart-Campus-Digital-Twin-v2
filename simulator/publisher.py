@@ -20,9 +20,11 @@ class MQTTPublisher:
     """Thread-safe MQTT publisher with automatic reconnection."""
 
     def __init__(self) -> None:
+        transport = "websockets" if config.mqtt_port == 9001 else "tcp"
         self._client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
             client_id=f"campus-simulator-{uuid.uuid4().hex[:8]}",
+            transport=transport,
         )
         if config.mqtt_username:
             self._client.username_pw_set(config.mqtt_username, config.mqtt_password)

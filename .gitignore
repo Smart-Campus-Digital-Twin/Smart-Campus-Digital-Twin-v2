@@ -122,3 +122,8 @@ secrets.env
 *.sqlite3
 *.db
 
+# PDF and Markdown files
+*.pdf
+*.md
+
+

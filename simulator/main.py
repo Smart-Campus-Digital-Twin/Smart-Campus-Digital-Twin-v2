@@ -19,8 +19,16 @@ Architecture
 """
 from __future__ import annotations
 
+import asyncio
 import signal
 import time
+from datetime import date as dt_date, datetime
+from typing import Dict, List, Optional, Tuple
+from zoneinfo import ZoneInfo
+from fastapi import FastAPI, BackgroundTasks, Request
+from fastapi.responses import HTMLResponse
+import uvicorn
+import threading
 from datetime import date as dt_date, datetime
 from typing import Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
@@ -70,7 +78,15 @@ def _make_context(
     }
 
 
-def main() -> None:
+app = FastAPI(title="Simulator Control UI")
+simulator_state = {
+    "running": True,
+    "reading_count": 0,
+    "interval_s": config.publish_interval_s,
+    "anomaly_prob": float(os.environ.get("ANOMALY_INJECTION_PROB", "0.01"))
+}
+
+def main_loop():
     logger.info("Starting Smart Campus Simulator (Zone-based with Academic Calendar)")
     topology  = CampusTopology()
     publisher = MQTTPublisher()
@@ -95,15 +111,6 @@ def main() -> None:
     }
 
     reading_count = 0
-    stop = False
-
-    def _handle_signal(sig, frame):
-        nonlocal stop
-        logger.info("Shutdown signal received")
-        stop = True
-
-    signal.signal(signal.SIGTERM, _handle_signal)
-    signal.signal(signal.SIGINT,  _handle_signal)
 
     logger.info(
         "Simulator ready",
@@ -116,7 +123,11 @@ def main() -> None:
         },
     )
 
-    while not stop:
+    while True:
+        if not simulator_state["running"]:
+            time.sleep(1)
+            continue
+
         now = datetime.now(ZoneInfo(config.campus_timezone))
         ctx = _make_context(now, event_calendar, academic_cal)
 
@@ -164,10 +175,37 @@ def main() -> None:
                 },
             )
 
-        time.sleep(config.publish_interval_s)
+        simulator_state["reading_count"] = reading_count
+        time.sleep(simulator_state["interval_s"])
 
     publisher.disconnect()
     logger.info("Simulator stopped", extra={"total_readings": reading_count})
+
+@app.get("/", response_class=HTMLResponse)
+async def get_ui():
+    return f"""
+    <html>
+        <head><title>Simulator Control</title></head>
+        <body style="font-family:sans-serif; padding:20px;">
+            <h2>Simulator Control UI</h2>
+            <p>Running: {simulator_state['running']}</p>
+            <p>Readings: {simulator_state['reading_count']}</p>
+            <form action="/toggle" method="post">
+                <button type="submit">Toggle Running</button>
+            </form>
+        </body>
+    </html>
+    """
+
+@app.post("/toggle")
+async def toggle_sim():
+    simulator_state["running"] = not simulator_state["running"]
+    return {"running": simulator_state["running"]}
+
+def main() -> None:
+    t = threading.Thread(target=main_loop, daemon=True)
+    t.start()
+    uvicorn.run(app, host="0.0.0.0", port=8002)
 
 
 if __name__ == "__main__":

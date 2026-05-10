@@ -18,10 +18,8 @@ resources:
   - keycloak.yaml
   - mlflow.yaml
   - ml-consumer.yaml
-  - ml-prediction.yaml
   - ml-retrain-daemon.yaml
   - api.yaml
-  - simulator.yaml
   - frontend.yaml
   - postgres-observer.yaml
   - grafana.yaml
@@ -34,17 +32,11 @@ images:
   - name: campus-api
     newName: ghcr.io/smart-campus-digital-twin/campus-api
     newTag: v3
-  - name: campus-simulator
-    newName: ghcr.io/smart-campus-digital-twin/campus-simulator
-    newTag: v3
   - name: campus-frontend
     newName: ghcr.io/smart-campus-digital-twin/campus-frontend
     newTag: v3
   - name: campus-ml-consumer
     newName: ghcr.io/smart-campus-digital-twin/campus-ml-consumer
-    newTag: v3
-  - name: campus-ml-prediction
-    newName: ghcr.io/smart-campus-digital-twin/campus-ml-prediction
     newTag: v3
 
 configMapGenerator:

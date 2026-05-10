@@ -30,7 +30,7 @@ export default function FloorPlan2D({
   goDown,
   isMobile = false,
 }: Props) {
-  const { fetchWithAuth, isReady, isAuthenticated } = useAuth();
+  const { fetchWithAuth, isReady, isAuthenticated, token } = useAuth();
   const createInitialStats = () => {
     const initialStats: Record<string, RoomStats> = {};
 
@@ -111,17 +111,14 @@ export default function FloorPlan2D({
     }
 
     const fetchRoomData = async () => {
-      // If we don't have a buildingId, we generate initial stats and don't poll
       if (!buildingId) return;
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api";
-        // /campus is the public prefix
         const res = await fetchWithAuth(`${apiUrl}/campus/buildings/${buildingId}/rooms`);
         if (res.ok) {
           const data = await res.json();
           const newStats: Record<string, RoomStats> = {};
           data.forEach((room: RoomRow) => {
-            // Only update stats if it's the current floor
             if (room.floor === floorNumber) {
               newStats[room.room_id] = {
                 temp: room.temperature,
@@ -129,24 +126,47 @@ export default function FloorPlan2D({
               };
             }
           });
-          
-          setStats((prev) => ({
-             ...prev,
-             ...newStats
-          }));
+          setStats((prev) => ({ ...prev, ...newStats }));
         }
       } catch (err) {
         console.error(`Failed to fetch room data for ${buildingId}:`, err);
       }
     };
 
+    // Initial fetch
     fetchRoomData();
 
-    // Poll every 3 seconds for room updates
-    const timer = setInterval(fetchRoomData, 3000);
+    if (!buildingId) return;
 
-    return () => clearInterval(timer);
-  }, [buildingId, fetchWithAuth, floor, floorNumber, isAuthenticated, isReady]);
+    // Connect to WebSocket
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsHost = process.env.NEXT_PUBLIC_WS_URL || `${protocol}//${window.location.host}`;
+    
+    const ws = new WebSocket(`${wsHost}/ws/buildings/${buildingId}?token=${token}`);
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "room_update" && data.floor === floorNumber) {
+          setStats((prev) => ({
+            ...prev,
+            [data.room_id]: {
+              temp: data.temperature,
+              occ: data.occupancy,
+            },
+          }));
+        } else if (data.type === "ping") {
+          ws.send(JSON.stringify({ type: "pong" }));
+        }
+      } catch (err) {
+        // Parse error
+      }
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [buildingId, fetchWithAuth, floor, floorNumber, isAuthenticated, isReady, token]);
 
   return (
     <div

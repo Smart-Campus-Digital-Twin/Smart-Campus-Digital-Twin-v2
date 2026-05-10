@@ -27,6 +27,11 @@ spec:
               value: "true"
             - name: ANOMALY_INJECTION_PROB
               value: "0.01"
+            - name: MQTT_PORT
+              value: "9001"
+          ports:
+            - containerPort: 8002
+              name: webui
           resources:
             requests:
               memory: 64Mi
@@ -34,3 +39,16 @@ spec:
             limits:
               memory: 128Mi
               cpu: 100m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: simulator
+  namespace: campus
+spec:
+  selector:
+    app: simulator
+  ports:
+    - protocol: TCP
+      port: 8002
+      targetPort: 8002
