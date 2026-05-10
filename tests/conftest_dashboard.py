@@ -78,9 +78,15 @@ def mock_influx():
         {"room_id": str(ROOM_ID), "building_id": str(BUILDING_ID),
          "floor": 1, "sensor_type": "humidity", "_value": 55.0, "_time": datetime.now(UTC)},
     ])
+    async def mock_room_history(building_id, room_id, field, window="1h"):
+        from api.db.influx import _validate_field, _validate_window
+        _validate_field(field)
+        _validate_window(window)
+        return pd.DataFrame()
+
     client.latest_for_building = AsyncMock(return_value=df)
     client.latest_for_room     = AsyncMock(return_value=df)
-    client.room_history        = AsyncMock(return_value=pd.DataFrame())
+    client.room_history        = AsyncMock(side_effect=mock_room_history)
     client.ping                = AsyncMock(return_value=True)
     return client
 
