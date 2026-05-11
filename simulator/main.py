@@ -175,19 +175,131 @@ def main_loop():
 
 @app.get("/", response_class=HTMLResponse)
 async def get_ui():
-    return f"""
-    <html>
-        <head><title>Simulator Control</title></head>
-        <body style="font-family:sans-serif; padding:20px;">
-            <h2>Simulator Control UI</h2>
-            <p>Running: {simulator_state['running']}</p>
-            <p>Readings: {simulator_state['reading_count']}</p>
-            <form action="/toggle" method="post">
-                <button type="submit">Toggle Running</button>
-            </form>
-        </body>
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Campus Simulator Control Panel</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+        <style>
+            :root {{
+                --bg: #0B0C10;
+                --panel: rgba(31, 40, 51, 0.7);
+                --text: #C5C6C7;
+                --accent: #66FCF1;
+                --accent-dark: #45A29E;
+            }}
+            body {{
+                margin: 0; padding: 0;
+                font-family: 'Inter', sans-serif;
+                background: radial-gradient(circle at center, #111a22 0%, var(--bg) 100%);
+                color: var(--text);
+                min-height: 100vh;
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                overflow: hidden;
+            }}
+            .container {{
+                background: var(--panel);
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid rgba(102, 252, 241, 0.2);
+                border-radius: 20px;
+                padding: 40px;
+                width: 90%; max-width: 500px;
+                box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+                text-align: center;
+                animation: fadeIn 0.8s ease-out;
+            }}
+            h1 {{
+                color: var(--accent);
+                margin-top: 0;
+                font-weight: 800;
+                letter-spacing: 1.5px;
+                text-transform: uppercase;
+                margin-bottom: 30px;
+            }}
+            .stats {{
+                display: flex; justify-content: space-around;
+                margin-bottom: 40px;
+            }}
+            .stat-box {{
+                background: rgba(0, 0, 0, 0.3);
+                padding: 15px 20px;
+                border-radius: 12px;
+                border: 1px solid rgba(102, 252, 241, 0.1);
+                transition: transform 0.3s;
+            }}
+            .stat-box:hover {{ transform: translateY(-5px); border-color: var(--accent); }}
+            .stat-value {{
+                font-size: 28px; font-weight: 800; color: #fff;
+                display: block; margin-bottom: 5px;
+            }}
+            .stat-label {{ font-size: 12px; text-transform: uppercase; color: var(--accent-dark); font-weight: 600; }}
+            .btn {{
+                background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+                color: var(--bg);
+                border: none;
+                padding: 15px 40px;
+                font-size: 16px; font-weight: 800;
+                border-radius: 30px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                text-transform: uppercase; letter-spacing: 1px;
+                box-shadow: 0 4px 15px rgba(102, 252, 241, 0.4);
+            }}
+            .btn:hover {{
+                transform: scale(1.05);
+                box-shadow: 0 6px 20px rgba(102, 252, 241, 0.6);
+            }}
+            .btn:active {{ transform: scale(0.95); }}
+            @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(20px); }} to {{ opacity: 1; transform: translateY(0); }} }}
+            
+            .status-indicator {{
+                display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+                margin-right: 10px;
+                box-shadow: 0 0 10px currentColor;
+            }}
+            .status-running {{ color: #00ff00; background: #00ff00; }}
+            .status-stopped {{ color: #ff0000; background: #ff0000; }}
+        </style>
+        <script>
+            async function toggleSim() {{
+                const res = await fetch('/toggle', {{method: 'POST'}});
+                if(res.ok) window.location.reload();
+            }}
+            setInterval(() => window.location.reload(), 5000);
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Simulator Control</h1>
+            
+            <div style="margin-bottom: 30px; font-weight: 600; font-size: 18px; display: flex; align-items: center; justify-content: center;">
+                <span class="status-indicator {'status-running' if simulator_state['running'] else 'status-stopped'}"></span>
+                { "SYSTEM ONLINE" if simulator_state['running'] else "SYSTEM OFFLINE" }
+            </div>
+
+            <div class="stats">
+                <div class="stat-box">
+                    <span class="stat-value">{simulator_state['reading_count']}</span>
+                    <span class="stat-label">Total Readings</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-value">{simulator_state['interval_s']}s</span>
+                    <span class="stat-label">Tick Interval</span>
+                </div>
+            </div>
+
+            <button class="btn" onclick="toggleSim()">
+                { "SHUT DOWN SIMULATION" if simulator_state['running'] else "INITIALIZE SIMULATION" }
+            </button>
+        </div>
+    </body>
     </html>
     """
+    return HTMLResponse(content=html_content)
 
 @app.post("/toggle")
 async def toggle_sim():

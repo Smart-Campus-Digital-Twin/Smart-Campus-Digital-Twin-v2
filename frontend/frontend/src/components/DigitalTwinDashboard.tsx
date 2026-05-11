@@ -64,7 +64,7 @@ export default function DigitalTwinDashboard() {
 
     const fetchZones = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api";
+        const apiUrl = "/api";
         const res = await fetchWithAuth(`${apiUrl}/campus/zones`);
         if (res.ok) {
           const data = await res.json();
