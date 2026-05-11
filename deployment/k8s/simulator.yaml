@@ -16,7 +16,7 @@ spec:
       containers:
         - name: simulator
           image: ghcr.io/smart-campus-digital-twin/campus-simulator:v3
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           env:
             - name: MQTT_HOST
               value: "mosquitto.campus.svc.cluster.local"
