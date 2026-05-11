@@ -30,7 +30,7 @@ spec:
             - name: KC_HTTP_RELATIVE_PATH
               value: "/auth"
             - name: KC_HOSTNAME
-              value: "http://167.172.5.124:8083"
+              value: "http://167.172.5.124:8083/auth"
             - name: KC_HOSTNAME_STRICT_HTTPS
               value: "false"
             - name: KC_PROXY_HEADERS
@@ -46,8 +46,9 @@ spec:
             httpGet:
               path: /auth/realms/master
               port: 8080
-            initialDelaySeconds: 60
+            initialDelaySeconds: 90
             periodSeconds: 15
+            timeoutSeconds: 10
             failureThreshold: 20
           volumeMounts:
             - name: realm-config
