@@ -4,6 +4,19 @@
   "displayName": "Smart Campus",
   "clients": [
     {
+      "clientId": "campus-frontend",
+      "name": "Campus Frontend",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "frontchannelLogout": true,
+      "redirectUris": ["*"],
+      "webOrigins": ["+"]
+    },
+    {
       "clientId": "campus-dev",
       "name": "Campus Dev Client",
       "protocol": "openid-connect",

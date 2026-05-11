@@ -69,6 +69,7 @@ class ZoneData(BaseModel):
     temperatureC: float  # mean across rooms
     anomalyCount: int
     status: str          # "normal" | "busy" | "critical"
+    hasData: bool        # False when no sensor readings in the last window
 
 
 class RoomData(BaseModel):
@@ -209,6 +210,8 @@ async def campus_zones(
         occs  = occ_lists.get(bld_id,  [])
         nrgs  = nrg_lists.get(bld_id,  [])
 
+        has_data = bool(temps or occs or nrgs)
+
         avg_temp  = round(sum(temps) / len(temps), 1) if temps else _DEFAULT["temperature"]
         total_occ_count = sum(occs) if occs else 0
         total_capacity = capacity_map.get(bld_id, 1)  # avoid division by zero
@@ -231,6 +234,7 @@ async def campus_zones(
             energyKw=energy_kw,
             anomalyCount=anom_cnt,
             status=_derive_status(occupancy_pct, avg_temp, anom_cnt),
+            hasData=has_data,
         ))
 
     # Cache for 5 seconds

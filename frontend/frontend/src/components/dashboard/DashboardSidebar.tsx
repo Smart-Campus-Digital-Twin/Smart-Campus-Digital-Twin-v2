@@ -241,10 +241,11 @@ export default function DashboardSidebar({
                             width: "6px",
                             height: "6px",
                             borderRadius: "50%",
-                            background: STATUS_COLORS[zone.status],
-                            boxShadow: `0 0 ${zone.status === "critical" ? "6px" : "3px"} ${STATUS_COLORS[zone.status]}`,
+                            background: zone.hasData ? STATUS_COLORS[zone.status] : "#555",
+                            boxShadow: zone.hasData ? `0 0 ${zone.status === "critical" ? "6px" : "3px"} ${STATUS_COLORS[zone.status]}` : "none",
                             flexShrink: 0,
                             animation:
+                              zone.hasData &&
                               zone.status === "critical" &&
                               !prefersReducedMotion
                                 ? "sidebarDotFlash 0.9s ease-in-out infinite"
@@ -329,12 +330,12 @@ export default function DashboardSidebar({
           {[
             [
               "STATUS",
-              selectedZone.status.toUpperCase(),
-              STATUS_COLORS[selectedZone.status],
+              selectedZone.hasData ? selectedZone.status.toUpperCase() : "NO DATA",
+              selectedZone.hasData ? STATUS_COLORS[selectedZone.status] : "#888",
             ],
-            ["Avg. Energy",    `${animatedEnergy.toFixed(1)} kW`,    "#97FEED"],
-            ["Avg. Occupancy", `${animatedOccupancy}%`,               "#97FEED"],
-            ["Avg. Temp",      `${animatedTemp.toFixed(1)}°C`,        "#97FEED"],
+            ["Avg. Energy",    selectedZone.hasData ? `${animatedEnergy.toFixed(1)} kW` : "—",    "#97FEED"],
+            ["Avg. Occupancy", selectedZone.hasData ? `${animatedOccupancy}%` : "—",              "#97FEED"],
+            ["Avg. Temp",      selectedZone.hasData ? `${animatedTemp.toFixed(1)}°C` : "—",       "#97FEED"],
           ].map(([label, value, color], i) => (
             <div
               key={i}
@@ -377,7 +378,7 @@ export default function DashboardSidebar({
                 height: "100%",
                 borderRadius: "3px",
                 background: STATUS_COLORS[selectedZone.status],
-                width: `${selectedZone.occupancy}%`,
+                width: selectedZone.hasData ? `${selectedZone.occupancy}%` : "0%",
                 transition: "width 0.6s ease",
               }}
             />

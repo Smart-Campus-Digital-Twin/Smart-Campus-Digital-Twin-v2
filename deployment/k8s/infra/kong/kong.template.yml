@@ -30,7 +30,7 @@ services:
     routes:
       - name: keycloak-auth
         paths: ["/auth"]
-        strip_path: true
+        strip_path: false
 
   # ── Grafana dashboards ───────────────────────────────────────────────────
   - name: grafana-svc
@@ -42,7 +42,7 @@ services:
 
   # ── Simulator UI ─────────────────────────────────────────────────────────
   - name: simulator-svc
-    url: http://simulator:8002
+    url: http://simulator.campus-simulator.svc.cluster.local:8002
     routes:
       - name: simulator-ui
         paths: ["/simulator"]

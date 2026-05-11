@@ -11,7 +11,6 @@ export function deriveStatus(occ: number, temp: number): ZoneStatus {
 }
 
 export function updateZone(zone: Zone): Zone {
-  // Simulating an average of multiple room sensors (smaller fluctuations than single rooms)
   const e = clamp(zone.energyKw + (Math.random() * 4 - 2), 15, 140);
   const o = clamp(zone.occupancy + (Math.random() * 2 - 1), 5, 98);
   const t = clamp(zone.temperatureC + (Math.random() * 0.4 - 0.2), 22, 38);
@@ -21,5 +20,6 @@ export function updateZone(zone: Zone): Zone {
     occupancy: Math.round(o),
     temperatureC: +t.toFixed(1),
     status: deriveStatus(o, t),
+    hasData: zone.hasData,
   };
 }

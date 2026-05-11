@@ -10,6 +10,7 @@ export type Zone = {
   occupancy: number;
   temperatureC: number;
   status: ZoneStatus;
+  hasData: boolean;
 };
 
 export type ZoneLayout = {
@@ -308,32 +309,10 @@ export const WALK_BOUNDS = {
 export const STABLE_INITIAL_ZONES: Zone[] = CAMPUS_LAYOUT.map((layout) => ({
   id: layout.id,
   name: layout.name,
-  energyKw: 50,
-  occupancy: 50,
-  temperatureC: 28.0,
-  status: "normal",
+  energyKw: 0,
+  occupancy: 0,
+  temperatureC: 0,
+  status: "normal" as ZoneStatus,
+  hasData: false,
 }));
 
-export const generateInitialZones = (): Zone[] => {
-  return CAMPUS_LAYOUT.map((layout) => {
-    const energyKw = 30 + Math.random() * 50;
-    const occupancy = Math.min(100, Math.floor(20 + Math.random() * 80));
-    const temperatureC = Math.min(35, 26 + Math.random() * 10);
-
-    let status: ZoneStatus = "normal";
-    if (temperatureC > 34 || occupancy > 85) status = "critical";
-    else if (temperatureC > 31 || occupancy > 70) status = "busy";
-
-    return {
-      id: layout.id,
-      name: layout.name,
-      buildingId: layout.id,
-      totalCapacity: 100,
-      currentOccupancy: Math.round((occupancy / 100) * 100),
-      energyKw: parseFloat(energyKw.toFixed(1)),
-      occupancy,
-      temperatureC: parseFloat(temperatureC.toFixed(1)),
-      status,
-    };
-  });
-};

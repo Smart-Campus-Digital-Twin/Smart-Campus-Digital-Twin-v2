@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import { Navigation, Eye } from "lucide-react";
-import { generateInitialZones, Zone } from "./dashboard/DashboardTypes";
+import { STABLE_INITIAL_ZONES, Zone } from "./dashboard/DashboardTypes";
 import DashboardSidebar from "./dashboard/DashboardSidebar";
 import DashboardHeader from "./dashboard/DashboardHeader";
 import DashboardScene from "./dashboard/DashboardScene";
@@ -12,7 +12,7 @@ import { useAuth } from "@/components/auth/KeycloakProvider";
 
 export default function DigitalTwinDashboard() {
   const { fetchWithAuth, isReady, isAuthenticated } = useAuth();
-  const [zones, setZones] = useState<Zone[]>(() => generateInitialZones());
+  const [zones, setZones] = useState<Zone[]>(STABLE_INITIAL_ZONES);
   const [selectedId, setSelectedId] = useState<string>("it");
   const [walkMode, setWalkMode] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
