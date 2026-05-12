@@ -2,6 +2,14 @@ _format_version: "3.0"
 _transform: true
 
 services:
+  # ── ACME HTTP-01 challenge (cert-manager) ───────────────────────────────
+  - name: acme-http-solver
+    url: http://cm-acme-http-solver.campus.svc.cluster.local:8089
+    routes:
+      - name: acme-challenge
+        paths: ["/.well-known/acme-challenge"]
+        strip_path: false
+
   # ── Campus REST API ──────────────────────────────────────────────────────
   - name: campus-api
     url: http://api:8000
@@ -90,6 +98,7 @@ plugins:
         - "http://campus.local"
         - "http://localhost:80"
         - "http://129.212.208.120"
+        - "https://campus.129-212-208-120.nip.io"
       methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
       headers:
         - Authorization
