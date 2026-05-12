@@ -103,9 +103,17 @@ data:
         client.on_connect    = on_connect
         client.on_disconnect = on_disconnect
         client.on_message    = on_message
-        client.connect(MQTT_HOST, MQTT_PORT, 60)
-        print(f"Connecting to MQTT {MQTT_HOST}:{MQTT_PORT}...", flush=True)
+        # Retry MQTT connect until mosquitto is ready
+        while True:
+            try:
+                client.connect(MQTT_HOST, MQTT_PORT, 60)
+                print(f"Connecting to MQTT {MQTT_HOST}:{MQTT_PORT}...", flush=True)
+                break
+            except (OSError, Exception) as e:
+                print(f"Waiting for MQTT at {MQTT_HOST}:{MQTT_PORT}: {e}", flush=True)
+                time.sleep(5)
         client.loop_forever(retry_first_connection=True)
+
 ---
 apiVersion: apps/v1
 kind: Deployment

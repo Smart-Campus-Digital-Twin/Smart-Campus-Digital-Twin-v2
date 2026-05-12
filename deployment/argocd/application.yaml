@@ -3,8 +3,6 @@ kind: Application
 metadata:
   name: smart-campus
   namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
 
@@ -19,18 +17,19 @@ spec:
 
   syncPolicy:
     automated:
-      prune: true
-      selfHeal: true
+      prune: false
+      selfHeal: false
       allowEmpty: false
     syncOptions:
       - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
+      - RespectIgnoreDifferences=true
     retry:
-      limit: 5
+      limit: 3
       backoff:
-        duration: 5s
+        duration: 30s
         factor: 2
-        maxDuration: 3m
+        maxDuration: 5m
 
   revisionHistoryLimit: 5
