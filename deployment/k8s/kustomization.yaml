@@ -27,6 +27,11 @@ resources:
   - konnect.yaml
   - prometheus.yaml
   - node-exporter.yaml
+  - acme-solver-svc.yaml
+  - kong-certificate.yaml
+  - mosquitto-lb.yaml
+  - postgres-vacuum-cron.yaml
+  - ml-prediction.yaml
 
 images:
   - name: campus-api
