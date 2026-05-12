@@ -31,7 +31,7 @@
       "implicitFlowEnabled": false,
       "frontchannelLogout": true,
       "redirectUris": [
-        "https://campus.129-212-208-120.nip.io/*",
+        "https://campus.129-212-216-214.nip.io/*",
         "http://localhost:3000/*",
         "http://localhost:3001/*",
         "http://campus.local/*"
@@ -39,7 +39,7 @@
       "webOrigins": ["+"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "https://campus.129-212-208-120.nip.io/*##http://localhost:3000/*##http://localhost:3001/*"
+        "post.logout.redirect.uris": "https://campus.129-212-216-214.nip.io/*##http://localhost:3000/*##http://localhost:3001/*"
       }
     }
   ],

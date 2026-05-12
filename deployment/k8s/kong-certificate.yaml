@@ -26,6 +26,6 @@ spec:
   issuerRef:
     name: letsencrypt-prod
     kind: Issuer
-  commonName: campus.129-212-208-120.nip.io
+  commonName: campus.129-212-216-214.nip.io
   dnsNames:
-    - campus.129-212-208-120.nip.io
+    - campus.129-212-216-214.nip.io

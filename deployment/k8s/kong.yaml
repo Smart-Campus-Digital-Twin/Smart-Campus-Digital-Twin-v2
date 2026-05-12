@@ -23,7 +23,7 @@ spec:
             - name: KEYCLOAK_REALM
               value: "campus"
             - name: JWT_ISSUER
-              value: "https://campus.129-212-208-120.nip.io/auth/realms/campus"
+              value: "https://campus.129-212-216-214.nip.io/auth/realms/campus"
             - name: KONG_TEMPLATE_PATH
               value: "/template/kong.yml"
             - name: KONG_OUT_PATH
@@ -70,7 +70,11 @@ spec:
             - name: KONG_DECLARATIVE_CONFIG
               value: /kong-config/kong.yml
             - name: KONG_PROXY_LISTEN
-              value: "0.0.0.0:8000"
+              value: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
+            - name: KONG_SSL_CERT
+              value: /etc/kong/tls/tls.crt
+            - name: KONG_SSL_CERT_KEY
+              value: /etc/kong/tls/tls.key
             - name: KONG_ADMIN_LISTEN
               value: "0.0.0.0:8001"
             - name: KONG_PROXY_ACCESS_LOG
