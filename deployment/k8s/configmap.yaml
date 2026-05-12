@@ -25,7 +25,7 @@ data:
   # Redis
   REDIS_URL: "redis://redis:6379"
   # Keycloak
-  KEYCLOAK_URL: "http://keycloak:8083/auth"
+  KEYCLOAK_URL: "http://keycloak:8080/auth"
   KEYCLOAK_REALM: "campus"
   # MQTT
   MQTT_HOST: "mosquitto"

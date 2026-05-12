@@ -23,7 +23,7 @@ services:
 
   # ── Keycloak auth endpoints ──────────────────────────────────────────────
   - name: keycloak-svc
-    url: http://keycloak:8083
+    url: http://keycloak:8080
     connect_timeout: 5000
     read_timeout: 30000
     write_timeout: 30000
@@ -34,7 +34,7 @@ services:
 
   # /resources/* → KC at /auth/resources/* (admin console static assets)
   - name: keycloak-resources-svc
-    url: http://keycloak:8083/auth
+    url: http://keycloak:8080/auth
     connect_timeout: 5000
     read_timeout: 30000
     write_timeout: 30000
@@ -89,6 +89,7 @@ plugins:
         - "http://localhost:3001"
         - "http://campus.local"
         - "http://localhost:80"
+        - "http://129.212.208.120"
       methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
       headers:
         - Authorization
