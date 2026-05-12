@@ -93,7 +93,7 @@ async def consume_loop(
         *TOPICS,
         bootstrap_servers=BOOTSTRAP_SERVERS,
         group_id=GROUP_ID,
-        auto_offset_reset="latest",
+        auto_offset_reset="earliest",
         enable_auto_commit=True,
         value_deserializer=lambda b: b,  # raw bytes — we parse below
     )
