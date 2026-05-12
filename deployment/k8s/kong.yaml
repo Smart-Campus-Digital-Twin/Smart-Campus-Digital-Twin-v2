@@ -19,11 +19,11 @@ spec:
           image: alpine:3.19
           env:
             - name: KEYCLOAK_INTERNAL_URL
-              value: "http://keycloak:8083"
+              value: "http://keycloak:8083/auth"
             - name: KEYCLOAK_REALM
               value: "campus"
             - name: JWT_ISSUER
-              value: "http://129.212.208.120/auth/realms/campus"
+              value: "http://167.172.5.124:8083/auth/realms/campus"
             - name: KONG_TEMPLATE_PATH
               value: "/template/kong.yml"
             - name: KONG_OUT_PATH

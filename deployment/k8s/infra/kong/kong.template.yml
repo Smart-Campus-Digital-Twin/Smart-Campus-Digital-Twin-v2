@@ -30,7 +30,15 @@ services:
     routes:
       - name: keycloak-auth
         paths: ["/auth"]
-        strip_path: true
+        strip_path: false
+
+  # /resources/* → KC at /auth/resources/* (admin console static assets)
+  - name: keycloak-resources-svc
+    url: http://keycloak:8083/auth
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    routes:
       - name: keycloak-resources
         paths: ["/resources"]
         strip_path: false

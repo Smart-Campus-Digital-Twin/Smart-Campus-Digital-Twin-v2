@@ -27,8 +27,10 @@ spec:
           env:
             - name: KC_DB_URL
               value: jdbc:postgresql://postgres:5432/keycloak
+            - name: KC_HTTP_RELATIVE_PATH
+              value: "/auth"
             - name: KC_HOSTNAME
-              value: "http://129.212.208.120/auth"
+              value: "http://167.172.5.124:8083/auth"
             - name: KC_PROXY_HEADERS
               value: "xforwarded"
           lifecycle:
@@ -49,7 +51,7 @@ spec:
               cpu: 400m
           readinessProbe:
             httpGet:
-              path: /realms/master
+              path: /auth/realms/master
               port: 8080
             initialDelaySeconds: 90
             periodSeconds: 15
