@@ -84,6 +84,8 @@ docker-compose.override.yml
 ARCHITECTURE_COMPREHENSIVE.md
 local/
 !local/apply-secrets.sh
+!FIX_PIPELINE_AND_INFRA_PLAN.md
+!context.md
 
 # Node / frontend
 node_modules/
@@ -125,5 +127,8 @@ secrets.env
 # PDF and Markdown files
 *.pdf
 *.md
+!FIX_PIPELINE_AND_INFRA_PLAN.md
+!context.md
+!RECOVERY_PLAN.md
 
 

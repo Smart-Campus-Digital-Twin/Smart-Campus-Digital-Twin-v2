@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: simulator
-  namespace: campus-simulator
+  namespace: campus
 spec:
   replicas: 1
   selector:
@@ -39,7 +39,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: simulator
-  namespace: campus-simulator
+  namespace: campus
 spec:
   selector:
     app: simulator

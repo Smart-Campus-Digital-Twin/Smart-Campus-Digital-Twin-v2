@@ -24,14 +24,13 @@ resources:
   - postgres-observer.yaml
   - grafana.yaml
   - kong.yaml
-  - konnect.yaml
   - prometheus.yaml
   - node-exporter.yaml
   - acme-solver-svc.yaml
   - kong-certificate.yaml
-  - mosquitto-lb.yaml
   - postgres-vacuum-cron.yaml
   - ml-prediction.yaml
+  - simulator.yaml
 
 images:
   - name: campus-api

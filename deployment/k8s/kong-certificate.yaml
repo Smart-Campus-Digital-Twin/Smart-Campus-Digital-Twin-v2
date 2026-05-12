@@ -11,7 +11,8 @@ spec:
       name: letsencrypt-prod-key
     solvers:
       - http01:
-          ingress: {}
+          ingress:
+            serviceType: ClusterIP
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
