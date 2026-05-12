@@ -56,11 +56,11 @@ spec:
                     /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE 2>/dev/null || true
           resources:
             requests:
-              memory: 128Mi
+              memory: 256Mi
               cpu: 100m
             limits:
-              memory: 1024Mi
-              cpu: 500m
+              memory: 768Mi
+              cpu: 400m
           readinessProbe:
             httpGet:
               path: /auth/realms/master

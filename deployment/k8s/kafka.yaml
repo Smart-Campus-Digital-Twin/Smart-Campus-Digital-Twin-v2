@@ -73,11 +73,11 @@ spec:
               mountPath: /var/lib/kafka/data
           resources:
             requests:
-              memory: 512Mi
-              cpu: 200m
+              memory: 256Mi
+              cpu: 100m
             limits:
-              memory: 1536Mi
-              cpu: 800m
+              memory: 768Mi
+              cpu: 400m
           readinessProbe:
             exec:
               command:
