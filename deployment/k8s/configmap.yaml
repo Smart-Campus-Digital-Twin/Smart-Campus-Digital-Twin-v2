@@ -5,7 +5,7 @@ metadata:
   namespace: campus
 data:
   # Kafka
-  KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka.campus.svc.cluster.local:9092"
   KAFKA_TOPIC_TEMPERATURE: "sensors.temperature"
   KAFKA_TOPIC_OCCUPANCY: "sensors.occupancy"
   KAFKA_TOPIC_ENERGY: "sensors.energy"
