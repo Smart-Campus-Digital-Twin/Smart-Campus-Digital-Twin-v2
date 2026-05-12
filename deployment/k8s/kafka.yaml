@@ -79,15 +79,11 @@ spec:
               memory: 768Mi
               cpu: 400m
           readinessProbe:
-            exec:
-              command:
-                - /opt/kafka/bin/kafka-topics.sh
-                - --bootstrap-server
-                - localhost:9092
-                - --list
+            tcpSocket:
+              port: 9092
             initialDelaySeconds: 30
-            periodSeconds: 15
-            timeoutSeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
       volumes:
         - name: data
           persistentVolumeClaim:

@@ -84,7 +84,7 @@ plugins:
           if kong.request.get_scheme() == "http"
              and not string.find(kong.request.get_path(), "^/%.well%-known/acme%-challenge/") then
             return kong.response.exit(301, "",
-              { ["Location"] = "https://campus.129-212-208-120.nip.io" .. kong.request.get_path_with_query() })
+              { ["Location"] = "https://campus.129-212-216-214.nip.io" .. kong.request.get_path_with_query() })
           end
 
   - name: rate-limiting
@@ -95,8 +95,8 @@ plugins:
   - name: cors
     config:
       origins:
-        - "https://campus.129-212-208-120.nip.io"
-        - "http://129.212.208.120"
+        - "https://campus.129-212-216-214.nip.io"
+        - "http://129.212.216.214"
       methods:
         - GET
         - POST
