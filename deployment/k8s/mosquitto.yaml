@@ -33,8 +33,13 @@ spec:
             - -c
             - |
               cp /tmp/config/mosquitto.conf /mosquitto/config/mosquitto.conf
-              mosquitto_passwd -c -b /mosquitto/config/passwd "$MQTT_USERNAME" "$MQTT_PASSWORD"
-              chown -R 1883:1883 /mosquitto/config
+              ls -la /mosquitto/data
+              if [ ! -f /mosquitto/data/passwd ]; then
+                echo "Generating password file..."
+                mosquitto_passwd -c -b /mosquitto/data/passwd "$MQTT_USERNAME" "$MQTT_PASSWORD"
+              fi
+              ls -la /mosquitto/data
+              chown -R 1883:1883 /mosquitto/config /mosquitto/data
           env:
             - name: MQTT_USERNAME
               valueFrom:
@@ -47,6 +52,8 @@ spec:
                   name: campus-mqtt
                   key: MQTT_PASSWORD
           volumeMounts:
+            - name: data
+              mountPath: /mosquitto/data
             - name: config-dir
               mountPath: /mosquitto/config
             - name: config-map
@@ -62,6 +69,9 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /mosquitto/data
+            - name: tls
+              mountPath: /mosquitto/tls
+              readOnly: true
             - name: config-dir
               mountPath: /mosquitto/config
           resources:
@@ -80,6 +90,9 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: mosquitto-data
+        - name: tls
+          secret:
+            secretName: kong-tls
         - name: config-dir
           emptyDir: {}
         - name: config-map

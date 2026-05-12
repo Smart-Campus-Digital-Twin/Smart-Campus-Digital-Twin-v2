@@ -10,10 +10,21 @@ data:
     listener 1883
     listener 9001
     protocol websockets
+    listener 8883
+    protocol mqtt
+    certfile /mosquitto/tls/tls.crt
+    keyfile /mosquitto/tls/tls.key
+    require_certificate false
     allow_anonymous false
-    password_file /mosquitto/config/passwd
+    password_file /mosquitto/data/passwd
+    acl_file /mosquitto/data/acl
     persistence true
     persistence_location /mosquitto/data/
+    autosave_interval 1800
+    autosave_on_changes false
+    persistent_client_expiration 1h
+    max_queued_messages 500
+    queue_qos0_messages false
     log_dest stdout
     log_type error
     log_type warning

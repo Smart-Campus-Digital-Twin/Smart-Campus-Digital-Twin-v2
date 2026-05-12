@@ -57,11 +57,17 @@ spec:
             - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
               value: "false"
             - name: KAFKA_LOG_RETENTION_MS
-              value: "604800000"
+              value: "86400000"
+            - name: KAFKA_LOG_RETENTION_BYTES
+              value: "5368709120"
+            - name: KAFKA_LOG_SEGMENT_BYTES
+              value: "536870912"
+            - name: KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS
+              value: "300000"
             - name: CLUSTER_ID
               value: "MkU3OEVBNTcwNTJENDM2Qk"
             - name: KAFKA_HEAP_OPTS
-              value: "-Xmx768m -Xms256m"
+              value: "-Xmx1024m -Xms512m"
           volumeMounts:
             - name: data
               mountPath: /var/lib/kafka/data
