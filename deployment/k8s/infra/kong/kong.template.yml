@@ -9,6 +9,7 @@ services:
       - name: acme-challenge
         paths: ["/.well-known/acme-challenge"]
         strip_path: false
+        preserve_host: true
 
   # ── Campus REST API ──────────────────────────────────────────────────────
   - name: campus-api
