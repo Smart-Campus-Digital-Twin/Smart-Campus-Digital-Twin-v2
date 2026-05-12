@@ -540,31 +540,31 @@ async def get_ui():
     }}
     setInterval(refreshStats, 5000);
 
-    async function loadSensors() {
+    async function loadSensors() {{
       const r = await fetch('/sensors');
       const d = await r.json();
       const list = document.getElementById('sensorList');
       list.innerHTML = d.sensors.map(s =>
         `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #333">
-          <span>${s.sensor_id}</span>
-          <button class="btn-sm ${s.enabled ? 'btn-danger' : 'btn-accent'}"
+          <span>${{s.sensor_id}}</span>
+          <button class="btn-sm ${{s.enabled ? 'btn-danger' : 'btn-accent'}}"
                   style="border:none; border-radius:4px; cursor:pointer;"
-                  onclick="toggleSensor('${s.sensor_id}', ${!s.enabled})">
-            ${s.enabled ? 'Disable' : 'Enable'}
+                  onclick="toggleSensor('${{s.sensor_id}}', ${{!s.enabled}})">
+            ${{s.enabled ? 'Disable' : 'Enable'}}
           </button>
         </div>`
       ).join('');
-    }
-    async function toggleSensor(id, enable) {
-      await post(`/sensor/${id}/${enable ? 'enable' : 'disable'}`);
+    }}
+    async function toggleSensor(id, enable) {{
+      await post(`/sensor/${{id}}/${{enable ? 'enable' : 'disable'}}`);
       loadSensors();
-    }
-    function filterSensors(q) {
+    }}
+    function filterSensors(q) {{
       q = q.toLowerCase();
-      for (const row of document.querySelectorAll('#sensorList > div')) {
+      for (const row of document.querySelectorAll('#sensorList > div')) {{
         row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-      }
-    }
+      }}
+    }}
     loadSensors();
     setInterval(loadSensors, 10000);
   </script>
