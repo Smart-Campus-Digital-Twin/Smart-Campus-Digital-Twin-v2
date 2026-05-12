@@ -66,7 +66,7 @@ export default function DashboardHeader({
               fontWeight: 500,
             }}
           >
-            Real-time 3D campus infrastructure monitoring,· occupancy ·
+            Real-time 3D campus infrastructure monitoring · occupancy ·
             temperature · energy states
           </p>
         )}
