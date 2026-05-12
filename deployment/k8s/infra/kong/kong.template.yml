@@ -85,6 +85,21 @@ services:
         strip_path: false
 
 plugins:
+  # Redirect any plain HTTP request to HTTPS nip.io hostname.
+  # Skips /.well-known/acme-challenge so cert-manager renewals keep working.
+  - name: pre-function
+    config:
+      access:
+        - |
+          local scheme = kong.request.get_scheme()
+          local path = kong.request.get_path()
+          if scheme == "http" and not string.find(path, "^/%.well%-known/acme%-challenge") then
+            local fullpath = kong.request.get_path_with_query()
+            return kong.response.exit(301, nil, {
+              ["Location"] = "https://campus.129-212-208-120.nip.io" .. fullpath
+            })
+          end
+
   # Global rate limiting
   - name: rate-limiting
     config:
