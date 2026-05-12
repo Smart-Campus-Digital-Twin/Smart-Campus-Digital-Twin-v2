@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: simulator
-          image: ghcr.io/smart-campus-digital-twin/campus-simulator:v3
+          image: ghcr.io/smart-campus-digital-twin/campus-simulator:latest
           imagePullPolicy: Always
           env:
             - name: MQTT_HOST
