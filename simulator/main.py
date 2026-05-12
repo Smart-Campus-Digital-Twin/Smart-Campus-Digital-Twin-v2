@@ -93,6 +93,7 @@ simulator_state: dict[str, Any] = {
     "anomaly_prob": float(os.environ.get("ANOMALY_INJECTION_PROB", "0.01")),
     # {building_id: {temperature, occupancy, energy, ticks_remaining}}
     "overrides": {},
+    "disabled_sensors": set(),  # NEW: set of sensor_id strings that should be skipped
 }
 
 
@@ -135,6 +136,8 @@ def main_loop():
         },
     )
 
+    simulator_state["all_sensor_ids"] = [s.sensor_id for _, s in all_sensors]
+
     while True:
         if not simulator_state["running"]:
             time.sleep(1)
@@ -148,6 +151,8 @@ def main_loop():
         occ_readings:  dict[str, float]  = {}
         occ_published: dict[str, object] = {}
         for room, sensor in all_sensors:
+            if sensor.sensor_id in simulator_state["disabled_sensors"]:
+                continue
             if sensor.sensor_type == "occupancy" and isinstance(sensor, OccupancySensor):
                 r = sensor.read(ctx)
                 if r is not None:
@@ -156,6 +161,8 @@ def main_loop():
                     occ_published[sensor.sensor_id] = r
 
         for room, sensor in all_sensors:
+            if sensor.sensor_id in simulator_state["disabled_sensors"]:
+                continue
             if sensor.sensor_id in occ_published:
                 reading = occ_published[sensor.sensor_id]
             else:
@@ -437,6 +444,13 @@ async def get_ui():
       </div>
     </div>
 
+    <!-- ── Sensors List ────────────────── -->
+    <div class="card" style="grid-column: 1 / -1">
+      <h2>Sensors</h2>
+      <input id="sensorFilter" placeholder="filter by id..." oninput="filterSensors(this.value)" style="width:100%; max-width:300px; padding:4px;">
+      <div id="sensorList" style="max-height: 320px; overflow-y: auto; margin-top: 8px"></div>
+    </div>
+
   </div>
 
   <script>
@@ -525,6 +539,34 @@ async def get_ui():
       }} catch(e) {{}}
     }}
     setInterval(refreshStats, 5000);
+
+    async function loadSensors() {
+      const r = await fetch('/sensors');
+      const d = await r.json();
+      const list = document.getElementById('sensorList');
+      list.innerHTML = d.sensors.map(s =>
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #333">
+          <span>${s.sensor_id}</span>
+          <button class="btn-sm ${s.enabled ? 'btn-danger' : 'btn-accent'}"
+                  style="border:none; border-radius:4px; cursor:pointer;"
+                  onclick="toggleSensor('${s.sensor_id}', ${!s.enabled})">
+            ${s.enabled ? 'Disable' : 'Enable'}
+          </button>
+        </div>`
+      ).join('');
+    }
+    async function toggleSensor(id, enable) {
+      await post(`/sensor/${id}/${enable ? 'enable' : 'disable'}`);
+      loadSensors();
+    }
+    function filterSensors(q) {
+      q = q.toLowerCase();
+      for (const row of document.querySelectorAll('#sensorList > div')) {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+      }
+    }
+    loadSensors();
+    setInterval(loadSensors, 10000);
   </script>
 </body>
 </html>"""
@@ -578,6 +620,27 @@ async def clear_override(building_id: str):
 async def list_overrides():
     return simulator_state["overrides"]
 
+class SensorToggleRequest(BaseModel):
+    enabled: bool
+
+@app.post("/sensor/{sensor_id}/enable")
+async def enable_sensor(sensor_id: str):
+    simulator_state["disabled_sensors"].discard(sensor_id)
+    return {"sensor_id": sensor_id, "enabled": True}
+
+@app.post("/sensor/{sensor_id}/disable")
+async def disable_sensor(sensor_id: str):
+    simulator_state["disabled_sensors"].add(sensor_id)
+    return {"sensor_id": sensor_id, "enabled": False}
+
+@app.get("/sensors")
+async def list_sensors():
+    return {
+        "sensors": [
+            {"sensor_id": s_id, "enabled": s_id not in simulator_state["disabled_sensors"]}
+            for s_id in simulator_state.get("all_sensor_ids", [])
+        ]
+    }
 
 @app.get("/status")
 async def get_status():
