@@ -112,9 +112,11 @@ async def consume_loop(
             await asyncio.sleep(5)
 
     try:
+        logger.info("Starting message consumption loop")
         async for msg in consumer:
             if stop_event.is_set():
                 break
+            logger.info(f"Received message from {msg.topic}, partition {msg.partition}, offset {msg.offset}")
             try:
                 payload = json.loads(msg.value.decode("utf-8"))
             except (json.JSONDecodeError, UnicodeDecodeError) as exc:
