@@ -35,6 +35,15 @@ spec:
               value: "false"
             - name: KC_PROXY_HEADERS
               value: "xforwarded"
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - sh
+                  - -c
+                  - |
+                    until /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080/auth --realm master --user admin --password admin 2>/dev/null; do sleep 15; done
+                    /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE 2>/dev/null || true
           resources:
             requests:
               memory: 256Mi
