@@ -60,7 +60,7 @@ spec:
                 name: postgres-env
           env:
             - name: KAFKA_CONSUMER_GROUP
-              value: campus-ml-consumer
+              value: campus-ml-consumer-v2
             - name: ANOMALY_TEMP_MIN
               value: "5.0"
             - name: ANOMALY_TEMP_MAX
