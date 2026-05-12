@@ -3,6 +3,11 @@
   "enabled": true,
   "displayName": "Smart Campus",
   "sslRequired": "none",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "verifyEmail": false,
   "clients": [
     {
       "clientId": "campus-dev",

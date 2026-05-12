@@ -35,6 +35,14 @@ spec:
               value: "/auth"
             - name: KC_HOSTNAME
               value: "https://campus.129-212-208-120.nip.io/auth"
+            - name: KC_HOSTNAME_ADMIN
+              value: "https://campus.129-212-208-120.nip.io/auth"
+            - name: KC_HOSTNAME_STRICT
+              value: "true"
+            - name: KC_HOSTNAME_STRICT_BACKCHANNEL
+              value: "false"
+            - name: KC_HTTP_ENABLED
+              value: "true"
             - name: KC_PROXY_HEADERS
               value: "xforwarded"
           lifecycle:

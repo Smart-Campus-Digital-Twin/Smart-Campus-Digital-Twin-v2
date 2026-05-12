@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, LogIn, LogOut } from "lucide-react";
+import { Building2, LogIn, LogOut, UserPlus } from "lucide-react";
 import { useAuth } from "@/components/auth/KeycloakProvider";
 
 export default function Navbar() {
-  const { isReady, isAuthenticated, username, login, logout } = useAuth();
+  const { isReady, isAuthenticated, username, login, register, logout } = useAuth();
 
   return (
     <nav
@@ -78,27 +78,68 @@ export default function Navbar() {
         >
           {isReady ? (isAuthenticated ? username || "Authenticated" : "Signed out") : "Signing in"}
         </span>
-        <button
-          onClick={isAuthenticated ? logout : login}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.45rem",
-            padding: "0.65rem 1rem",
-            borderRadius: 999,
-            border: "1px solid rgba(151, 254, 237, 0.35)",
-            background: isAuthenticated
-              ? "rgba(7, 25, 82, 0.55)"
-              : "linear-gradient(135deg, #97FEED 0%, #35A29F 100%)",
-            color: isAuthenticated ? "#97FEED" : "#071952",
-            fontSize: "0.8rem",
-            fontWeight: 800,
-            cursor: "pointer",
-          }}
-        >
-          {isAuthenticated ? <LogOut size={14} /> : <LogIn size={14} />}
-          {isAuthenticated ? "Sign out" : "Sign in"}
-        </button>
+        {isAuthenticated ? (
+          <button
+            onClick={logout}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.45rem",
+              padding: "0.65rem 1rem",
+              borderRadius: 999,
+              border: "1px solid rgba(151, 254, 237, 0.35)",
+              background: "rgba(7, 25, 82, 0.55)",
+              color: "#97FEED",
+              fontSize: "0.8rem",
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            <LogOut size={14} />
+            Sign out
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={login}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.45rem",
+                padding: "0.65rem 1rem",
+                borderRadius: 999,
+                border: "1px solid rgba(151, 254, 237, 0.35)",
+                background: "rgba(7, 25, 82, 0.55)",
+                color: "#97FEED",
+                fontSize: "0.8rem",
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              <LogIn size={14} />
+              Sign in
+            </button>
+            <button
+              onClick={register}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.45rem",
+                padding: "0.65rem 1rem",
+                borderRadius: 999,
+                border: "1px solid rgba(151, 254, 237, 0.35)",
+                background: "linear-gradient(135deg, #97FEED 0%, #35A29F 100%)",
+                color: "#071952",
+                fontSize: "0.8rem",
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              <UserPlus size={14} />
+              Sign up
+            </button>
+          </>
+        )}
       </div>
     </nav>
   );

@@ -17,6 +17,7 @@ type AuthContextValue = {
   username: string | null;
   token: string | null;
   login: () => void;
+  register: () => void;
   logout: () => void;
   fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 };
@@ -43,9 +44,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     keycloak
       .init({
-        onLoad: "login-required",
+        onLoad: "check-sso",
         pkceMethod: "S256",
         checkLoginIframe: false,
+        silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
       })
       .then((authenticated) => {
         if (!active) {
@@ -108,6 +110,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void keycloak.login({ redirectUri: window.location.href });
   }, [keycloak]);
 
+  const register = useCallback(() => {
+    void keycloak.register({ redirectUri: window.location.href });
+  }, [keycloak]);
+
   const logout = useCallback(() => {
     void keycloak.logout({ redirectUri: window.location.origin });
   }, [keycloak]);
@@ -140,10 +146,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username,
       token,
       login,
+      register,
       logout,
       fetchWithAuth,
     }),
-    [fetchWithAuth, isAuthenticated, isReady, login, logout, token, username],
+    [fetchWithAuth, isAuthenticated, isReady, login, logout, register, token, username],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
