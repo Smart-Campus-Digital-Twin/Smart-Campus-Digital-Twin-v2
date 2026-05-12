@@ -112,6 +112,8 @@ plugins:
 
   - name: jwt
     service: campus-api
+    routes:
+      - api-rest
     config:
       key_claim_name: iss
       claims_to_verify:

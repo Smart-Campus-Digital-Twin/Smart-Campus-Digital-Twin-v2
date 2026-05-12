@@ -64,8 +64,7 @@ export default function DigitalTwinDashboard() {
 
     const fetchZones = async () => {
       try {
-        const apiUrl = "/api";
-        const res = await fetchWithAuth(`${apiUrl}/campus/zones`);
+        const res = await fetch("/api/campus/zones");
         if (res.ok) {
           const data = await res.json();
           setZones(data);
@@ -79,7 +78,7 @@ export default function DigitalTwinDashboard() {
 
     const t = setInterval(fetchZones, 5000);
     return () => clearInterval(t);
-  }, [fetchWithAuth, isAuthenticated, isReady]);
+  }, [isAuthenticated, isReady]);
 
   useEffect(() => {
     const check = () => {

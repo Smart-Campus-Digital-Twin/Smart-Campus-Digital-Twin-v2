@@ -46,7 +46,7 @@ spec:
               done
       containers:
         - name: ml-consumer
-          image: campus-ml-consumer:latest
+          image: ghcr.io/smart-campus-digital-twin/campus-ml-consumer:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 9091
