@@ -44,7 +44,7 @@ export default function DashboardHeader({
             opacity: 0.8,
           }}
         >
-          Group I3 • University of Moratuwa
+          University of Moratuwa
         </p>
         <h1
           style={{
@@ -66,7 +66,7 @@ export default function DashboardHeader({
               fontWeight: 500,
             }}
           >
-            Real-time 3D campus infrastructure monitoring — occupancy ·
+            Real-time 3D campus infrastructure monitoring,· occupancy ·
             temperature · energy states
           </p>
         )}

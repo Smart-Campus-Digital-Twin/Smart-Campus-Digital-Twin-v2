@@ -43,9 +43,9 @@ services:
   - name: simulator-svc
     url: http://simulator:8002
     routes:
-      - name: simulator-ui
+      - name: simulator-api
         paths:
-          - "/simulator"
+          - "/simulator/api"
         strip_path: true
 
   - name: mosquitto-ws

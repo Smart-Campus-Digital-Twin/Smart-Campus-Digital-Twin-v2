@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Smart Campus Digital Twin - Group I3",
+  title: "Smart Campus Digital Twin",
   description: "Digital twin of campus with real-time data and visualization.",
 };
 
