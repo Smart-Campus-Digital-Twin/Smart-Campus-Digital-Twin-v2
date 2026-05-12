@@ -30,6 +30,9 @@ services:
     routes:
       - name: keycloak-auth
         paths: ["/auth"]
+        strip_path: true
+      - name: keycloak-resources
+        paths: ["/resources"]
         strip_path: false
 
   # ── Grafana dashboards ───────────────────────────────────────────────────
