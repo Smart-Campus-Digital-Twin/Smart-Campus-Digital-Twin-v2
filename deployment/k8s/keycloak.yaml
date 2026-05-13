@@ -34,9 +34,9 @@ spec:
             - name: KC_HTTP_RELATIVE_PATH
               value: "/auth"
             - name: KC_HOSTNAME
-              value: "https://campus.129-212-216-214.nip.io/auth"
+              value: "https://campus.165-245-144-106.nip.io/auth"
             - name: KC_HOSTNAME_ADMIN
-              value: "https://campus.129-212-216-214.nip.io/auth"
+              value: "https://campus.165-245-144-106.nip.io/auth"
             - name: KC_HOSTNAME_STRICT
               value: "true"
             - name: KC_HOSTNAME_STRICT_BACKCHANNEL

@@ -34,7 +34,7 @@ spec:
                 - name: KEYCLOAK_REALM
                   value: "campus"
                 - name: JWT_ISSUER
-                  value: "https://campus.129-212-208-120.nip.io/auth/realms/campus"
+                  value: "https://campus.165-245-144-106.nip.io/auth/realms/campus"
                 - name: KONG_TEMPLATE_PATH
                   value: "/template/kong.yml"
                 - name: KONG_OUT_PATH

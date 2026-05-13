@@ -95,9 +95,7 @@ plugins:
           local path = kong.request.get_path()
           if scheme == "http" and not string.find(path, "^/%.well%-known/acme%-challenge") then
             local fullpath = kong.request.get_path_with_query()
-            return kong.response.exit(301, nil, {
-              ["Location"] = "https://campus.129-212-208-120.nip.io" .. fullpath
-            })
+            return kong.response.exit(301, "", { ["Location"] = "https://campus.165-245-144-106.nip.io" .. kong.request.get_path_with_query() })
           end
 
   # Global rate limiting
@@ -114,7 +112,8 @@ plugins:
         - "http://campus.local"
         - "http://localhost:80"
         - "http://129.212.208.120"
-        - "https://campus.129-212-208-120.nip.io"
+        - "https://campus.165-245-144-106.nip.io"
+        - "http://165.245.144.106"
       methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
       headers:
         - Authorization
