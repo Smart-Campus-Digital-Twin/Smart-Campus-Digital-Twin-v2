@@ -132,10 +132,13 @@ kind: Service
 metadata:
   name: kong
   namespace: campus
+  annotations:
+    kubernetes.digitalocean.com/load-balancer-ip: "129.212.216.214"
 spec:
   selector:
     app: kong
   type: LoadBalancer
+  loadBalancerIP: 129.212.216.214
   ports:
     - port: 80
       targetPort: 8000
