@@ -30,7 +30,7 @@ export default function FloorPlan2D({
   goDown,
   isMobile = false,
 }: Props) {
-  const { fetchWithAuth, isReady, isAuthenticated, token } = useAuth();
+  const { isReady, isAuthenticated } = useAuth();
   const createInitialStats = () => {
     const initialStats: Record<string, RoomStats> = {};
 
@@ -98,75 +98,32 @@ export default function FloorPlan2D({
   const planWidth = (bounds.maxX - bounds.minX) * SCALE;
   const planHeight = (bounds.maxY - bounds.minY) * SCALE;
 
-  type RoomRow = {
-    room_id: string;
-    floor: number;
-    temperature: number;
-    occupancy: number;
-  };
-
   useEffect(() => {
     if (!isReady || !isAuthenticated) {
       return;
     }
 
-    const fetchRoomData = async () => {
-      if (!buildingId) return;
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api";
-        const res = await fetchWithAuth(`${apiUrl}/campus/buildings/${buildingId}/rooms`);
-        if (res.ok) {
-          const data = await res.json();
-          const newStats: Record<string, RoomStats> = {};
-          data.forEach((room: RoomRow) => {
-            if (room.floor === floorNumber) {
-              newStats[room.room_id] = {
-                temp: room.temperature,
-                occ: room.occupancy,
-              };
-            }
-          });
-          setStats((prev) => ({ ...prev, ...newStats }));
-        }
-      } catch (err) {
-        console.error(`Failed to fetch room data for ${buildingId}:`, err);
-      }
+    const tick = () => {
+      setStats((prev) => {
+        const next: Record<string, RoomStats> = { ...prev };
+        floor.rooms.forEach((room) => {
+          if (room.type === "stairs" || room.type === "free") return;
+          const cur = prev[room.id] ?? { temp: 24, occ: 50 };
+          const tempDelta = (Math.random() - 0.5) * 0.6;
+          const occDelta = (Math.random() - 0.5) * 8;
+          next[room.id] = {
+            temp: Math.max(20, Math.min(30, cur.temp + tempDelta)),
+            occ: Math.max(0, Math.min(100, cur.occ + occDelta)),
+          };
+        });
+        return next;
+      });
     };
 
-    // Initial fetch
-    fetchRoomData();
-
-    if (!buildingId) return;
-
-    // Connect to WebSocket
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsHost = process.env.NEXT_PUBLIC_WS_URL || `${protocol}//${window.location.host}`;
-    
-    const ws = new WebSocket(`${wsHost}/ws/buildings/${buildingId}?token=${token}`);
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "room_update" && data.floor === floorNumber) {
-          setStats((prev) => ({
-            ...prev,
-            [data.room_id]: {
-              temp: data.temperature,
-              occ: data.occupancy,
-            },
-          }));
-        } else if (data.type === "ping") {
-          ws.send(JSON.stringify({ type: "pong" }));
-        }
-      } catch (err) {
-        // Parse error
-      }
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [buildingId, fetchWithAuth, floor, floorNumber, isAuthenticated, isReady, token]);
+    tick();
+    const interval = window.setInterval(tick, 3000);
+    return () => window.clearInterval(interval);
+  }, [floor, floorNumber, isAuthenticated, isReady]);
 
   return (
     <div

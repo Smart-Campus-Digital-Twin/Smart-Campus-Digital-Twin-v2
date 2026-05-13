@@ -11,7 +11,7 @@ import DashboardScene from "./dashboard/DashboardScene";
 import { useAuth } from "@/components/auth/KeycloakProvider";
 
 export default function DigitalTwinDashboard() {
-  const { fetchWithAuth, isReady, isAuthenticated } = useAuth();
+  const { isReady, isAuthenticated } = useAuth();
   const [zones, setZones] = useState<Zone[]>(STABLE_INITIAL_ZONES);
   const [selectedId, setSelectedId] = useState<string>("it");
   const [walkMode, setWalkMode] = useState(false);
@@ -62,8 +62,6 @@ export default function DigitalTwinDashboard() {
       return;
     }
 
-    const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-
     const generateDemoZones = (): Zone[] =>
       STABLE_INITIAL_ZONES.map((z) => {
         const baseOcc = 30 + Math.random() * 60;
@@ -85,29 +83,8 @@ export default function DigitalTwinDashboard() {
         };
       });
 
-    const fetchZones = async () => {
-      if (DEMO_MODE) {
-        setZones(generateDemoZones());
-        return;
-      }
-      try {
-        const res = await fetch("/api/campus/zones");
-        if (res.ok) {
-          const data = await res.json();
-          const hasReal = Array.isArray(data) && data.some((z: Zone) => z.hasData);
-          setZones(hasReal ? data : generateDemoZones());
-        } else {
-          setZones(generateDemoZones());
-        }
-      } catch (err) {
-        console.error("Failed to fetch zones, using demo data:", err);
-        setZones(generateDemoZones());
-      }
-    };
-
-    fetchZones();
-
-    const t = setInterval(fetchZones, 5000);
+    setZones(generateDemoZones());
+    const t = setInterval(() => setZones(generateDemoZones()), 5000);
     return () => clearInterval(t);
   }, [isAuthenticated, isReady]);
 
