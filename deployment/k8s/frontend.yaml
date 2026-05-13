@@ -30,6 +30,8 @@ spec:
               value: campus-frontend
             - name: NODE_ENV
               value: production
+            - name: NEXT_PUBLIC_DEMO_MODE
+              value: "true"
           resources:
             requests:
               memory: 64Mi

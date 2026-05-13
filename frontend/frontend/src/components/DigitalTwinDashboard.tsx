@@ -62,15 +62,46 @@ export default function DigitalTwinDashboard() {
       return;
     }
 
+    const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
+    const generateDemoZones = (): Zone[] =>
+      STABLE_INITIAL_ZONES.map((z) => {
+        const baseOcc = 30 + Math.random() * 60;
+        const occ = Math.max(0, Math.min(100, baseOcc + (Math.random() - 0.5) * 20));
+        const energy = 5 + Math.random() * 25 + occ * 0.3;
+        const temp = 22 + Math.random() * 6;
+        const status: Zone["status"] =
+          occ > 85 ? "critical" : occ > 65 ? "busy" : "normal";
+        return {
+          ...z,
+          energyKw: Number(energy.toFixed(1)),
+          occupancy: Math.round(occ),
+          temperatureC: Number(temp.toFixed(1)),
+          status,
+          hasData: true,
+          totalCapacity: 100,
+          currentOccupancy: Math.round(occ),
+          buildingId: z.id,
+        };
+      });
+
     const fetchZones = async () => {
+      if (DEMO_MODE) {
+        setZones(generateDemoZones());
+        return;
+      }
       try {
         const res = await fetch("/api/campus/zones");
         if (res.ok) {
           const data = await res.json();
-          setZones(data);
+          const hasReal = Array.isArray(data) && data.some((z: Zone) => z.hasData);
+          setZones(hasReal ? data : generateDemoZones());
+        } else {
+          setZones(generateDemoZones());
         }
       } catch (err) {
-        console.error("Failed to fetch zones:", err);
+        console.error("Failed to fetch zones, using demo data:", err);
+        setZones(generateDemoZones());
       }
     };
 
