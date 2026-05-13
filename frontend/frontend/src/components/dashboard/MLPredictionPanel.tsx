@@ -54,18 +54,21 @@ export default function MLPredictionPanel({
     setLoading(true);
     setError(null);
 
-    const actual = currentOccupancy ?? occupancy;
-    const drift = (Math.random() - 0.4) * 25;
-    const predicted = Math.max(0, Math.min(100, actual + drift));
+    const cap = totalCapacity && totalCapacity > 0 ? totalCapacity : 100;
+    const actualPct = currentOccupancy ?? occupancy;
+    const actualCount = Math.round((actualPct / 100) * cap);
+    const drift = (Math.random() - 0.4) * 8;
+    const predictedPct = Math.max(0, Math.min(100, actualPct + drift));
+    const predictedCount = Math.round((predictedPct / 100) * cap);
     setPrediction({
       room_id: selectedZoneId,
-      predicted_avg: predicted,
-      actual_avg: actual,
+      predicted_avg: predictedCount,
+      actual_avg: actualCount,
       timestamp: new Date().toISOString(),
       written_to_influx: false,
     });
     setLoading(false);
-  }, [isAuthenticated, isReady, occupancy, selectedZoneId, selectedZoneName, currentOccupancy]);
+  }, [isAuthenticated, isReady, occupancy, selectedZoneId, selectedZoneName, currentOccupancy, totalCapacity]);
 
   useEffect(() => {
     const initialTimer = window.setTimeout(() => {
@@ -126,9 +129,9 @@ export default function MLPredictionPanel({
         <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <span style={{ fontSize: "9px", color: "rgba(151, 254, 237, 0.6)" }}>NEXT SLOT PREDICTION</span>
+              <span style={{ fontSize: "9px", color: "rgba(151, 254, 237, 0.6)" }}>PREDICTED OCCUPANCY</span>
               <span style={{ fontSize: "20px", fontWeight: 800, color: "#fff" }}>
-                {prediction.predicted_avg.toFixed(1)}%
+                {Math.round(prediction.predicted_avg)} people
               </span>
             </div>
             <div
@@ -158,7 +161,7 @@ export default function MLPredictionPanel({
             }}
           >
             Trend: {prediction.predicted_avg > prediction.actual_avg ? "Increasing" : "Decreasing"} 
-            ({Math.abs(prediction.predicted_avg - prediction.actual_avg).toFixed(1)}% shift expected)
+            ({Math.abs(Math.round(prediction.predicted_avg - prediction.actual_avg))} people shift expected)
           </div>
         </>
       ) : (

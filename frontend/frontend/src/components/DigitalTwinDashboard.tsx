@@ -7,7 +7,7 @@ import { Navigation, Eye } from "lucide-react";
 import { STABLE_INITIAL_ZONES, Zone } from "./dashboard/DashboardTypes";
 import DashboardSidebar from "./dashboard/DashboardSidebar";
 import DashboardHeader from "./dashboard/DashboardHeader";
-import DashboardScene from "./dashboard/DashboardScene";
+import DashboardScene, { type TimeOfDay } from "./dashboard/DashboardScene";
 import { useAuth } from "@/components/auth/KeycloakProvider";
 
 export default function DigitalTwinDashboard() {
@@ -24,6 +24,7 @@ export default function DigitalTwinDashboard() {
   const [runMode, setRunMode] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>("day");
   const sceneSectionRef = useRef<HTMLElement | null>(null);
 
   const toggleCategory = (category: string) => {
@@ -62,12 +63,29 @@ export default function DigitalTwinDashboard() {
       return;
     }
 
-    const generateDemoZones = (): Zone[] =>
-      STABLE_INITIAL_ZONES.map((z) => {
-        const baseOcc = 30 + Math.random() * 60;
-        const occ = Math.max(0, Math.min(100, baseOcc + (Math.random() - 0.5) * 20));
-        const energy = 5 + Math.random() * 25 + occ * 0.3;
-        const temp = 22 + Math.random() * 6;
+    // Stable per-zone baselines so values don't jump around
+    const baselines = STABLE_INITIAL_ZONES.map((z) => {
+      const seed = z.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+      return {
+        id: z.id,
+        baseOcc: 35 + (seed % 50),
+        baseTemp: 22 + (seed % 5),
+      };
+    });
+
+    const driftZones = (prev: Zone[]): Zone[] =>
+      STABLE_INITIAL_ZONES.map((z, i) => {
+        const base = baselines[i];
+        const cur = prev[i] ?? z;
+        const occ = Math.max(
+          5,
+          Math.min(100, (cur.occupancy || base.baseOcc) + (Math.random() - 0.5) * 3),
+        );
+        const temp = Math.max(
+          20,
+          Math.min(28, (cur.temperatureC || base.baseTemp) + (Math.random() - 0.5) * 0.3),
+        );
+        const energy = 5 + occ * 0.25 + (Math.random() - 0.5) * 1.5;
         const status: Zone["status"] =
           occ > 85 ? "critical" : occ > 65 ? "busy" : "normal";
         return {
@@ -83,8 +101,8 @@ export default function DigitalTwinDashboard() {
         };
       });
 
-    setZones(generateDemoZones());
-    const t = setInterval(() => setZones(generateDemoZones()), 5000);
+    setZones((prev) => driftZones(prev));
+    const t = setInterval(() => setZones((prev) => driftZones(prev)), 5000);
     return () => clearInterval(t);
   }, [isAuthenticated, isReady]);
 
@@ -407,6 +425,42 @@ export default function DigitalTwinDashboard() {
                   RUN {runMode ? "ON" : "OFF"}
                 </button>
               )}
+              {(["day", "evening", "night"] as TimeOfDay[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTimeOfDay(t)}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    background: timeOfDay === t ? "#97FEED" : "rgba(7,25,82,0.6)",
+                    border: "1px solid rgba(151,254,237,0.3)",
+                    color: timeOfDay === t ? "#071952" : "#fff",
+                    fontSize: 9,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {t}
+                </button>
+              ))}
+              <button
+                onClick={() => {
+                  toggleFullscreen().catch(() => {});
+                }}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  background: isFullscreen ? "#FAC75A" : "rgba(7,25,82,0.6)",
+                  border: "1px solid rgba(151,254,237,0.3)",
+                  color: isFullscreen ? "#071952" : "#fff",
+                  fontSize: 9,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                {isFullscreen ? "EXIT FULL" : "FULL SCREEN"}
+              </button>
               <button
                 onClick={toggleWalkMode}
                 style={{
@@ -446,6 +500,7 @@ export default function DigitalTwinDashboard() {
               walkMode={walkMode}
               isMobile={isMobile}
               runMode={runMode}
+              timeOfDay={timeOfDay}
             />
           </Canvas>
 
