@@ -108,7 +108,7 @@ export default function MLPredictionPanel({
     } finally {
       setLoading(false);
     }
-  }, [fetchWithAuth, isAuthenticated, isReady, occupancy, selectedZoneId, selectedZoneName]);
+  }, [fetchWithAuth, isAuthenticated, isReady, occupancy, selectedZoneId, selectedZoneName, buildingId, currentOccupancy, totalCapacity]);
 
   useEffect(() => {
     const initialTimer = window.setTimeout(() => {
