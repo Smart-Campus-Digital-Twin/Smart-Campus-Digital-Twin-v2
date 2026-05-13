@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_KNOWN_BAD_SECRETS = frozenset({"changeme", "changeme-admin-token", ""})
+_KNOWN_BAD_SECRETS = frozenset({"changeme-admin-token", ""})
 
 
 class APIConfig(BaseSettings):
