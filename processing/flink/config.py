@@ -29,8 +29,8 @@ class FlinkConfig(BaseSettings):
     influxdb_org:        str = "smart-campus"
     influxdb_bucket_raw: str = "campus_raw"
     influxdb_bucket_1m:  str = "campus_1m"
-    influx_batch_size:   int = 200
-    influx_flush_ms:     int = 500
+    influx_batch_size:   int = 1000
+    influx_flush_ms:     int = 2000
 
     database_url: str = ""
 

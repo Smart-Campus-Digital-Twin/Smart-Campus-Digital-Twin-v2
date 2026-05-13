@@ -91,7 +91,7 @@ class InfluxBatchSink(MapFunction):
             record    = "\n".join(batch),
             precision = "ns",
         )
-        logger.info(
+        logger.debug(
             "Flushed records to InfluxDB",
             extra={"count": len(batch), "bucket": self._bucket},
         )

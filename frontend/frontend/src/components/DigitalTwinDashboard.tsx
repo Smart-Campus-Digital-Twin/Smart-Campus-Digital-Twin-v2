@@ -25,6 +25,8 @@ export default function DigitalTwinDashboard() {
   const [runMode, setRunMode] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [skyMode, setSkyMode] = useState<"day" | "evening" | "night">("day");
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const sceneSectionRef = useRef<HTMLElement | null>(null);
 
   const toggleCategory = (category: string) => {
@@ -307,6 +309,8 @@ export default function DigitalTwinDashboard() {
             criticalCount={criticalCount}
             zones={zones}
             isMobile={isMobile}
+            isSignedIn={isSignedIn}
+            onSignInToggle={() => setIsSignedIn(!isSignedIn)}
           />
         )}
 
@@ -398,6 +402,46 @@ export default function DigitalTwinDashboard() {
                 </button>
               )}
               <button
+                onClick={() => {
+                  const modes: Array<"day" | "evening" | "night"> = ["day", "evening", "night"];
+                  const currentIndex = modes.indexOf(skyMode);
+                  setSkyMode(modes[(currentIndex + 1) % 3]);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  background: skyMode === "day" ? "#87CEEB" : skyMode === "evening" ? "#FF6B35" : "#1a1a2e",
+                  border: "1px solid rgba(151,254,237,0.3)",
+                  color: "#fff",
+                  fontSize: 9,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                {skyMode === "day" ? "☀️ DAY" : skyMode === "evening" ? "🌅 EVENING" : "🌙 NIGHT"}
+              </button>
+              <button
+                onClick={toggleFullscreen}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  background: isFullscreen ? "#35A29F" : "rgba(7,25,82,0.6)",
+                  border: "1px solid rgba(151,254,237,0.3)",
+                  color: "#fff",
+                  fontSize: 9,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                {isFullscreen ? "⛶ EXIT FULLSCREEN" : "⛶ FULLSCREEN"}
+              </button>
+              <button
                 onClick={toggleWalkMode}
                 style={{
                   display: "flex",
@@ -436,6 +480,7 @@ export default function DigitalTwinDashboard() {
               walkMode={walkMode}
               isMobile={isMobile}
               runMode={runMode}
+              skyMode={skyMode}
             />
           </Canvas>
 

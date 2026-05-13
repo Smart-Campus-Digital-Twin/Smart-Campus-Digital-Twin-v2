@@ -11,6 +11,8 @@ interface DashboardHeaderProps {
   criticalCount: number;
   zones: Zone[];
   isMobile?: boolean;
+  isSignedIn?: boolean;
+  onSignInToggle?: () => void;
 }
 
 export default function DashboardHeader({
@@ -20,6 +22,8 @@ export default function DashboardHeader({
   criticalCount,
   zones,
   isMobile = false,
+  isSignedIn = false,
+  onSignInToggle = () => {},
 }: DashboardHeaderProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const [showPanel, setShowPanel] = useState(false);
@@ -53,50 +57,72 @@ export default function DashboardHeader({
     <header
       style={{
         display: "flex",
-        flexDirection: isMobile ? "column" : "row",
-        justifyContent: "space-between",
-        alignItems: isMobile ? "flex-start" : "flex-end",
+        flexDirection: "column",
         background: "rgba(11, 102, 106, 0.15)",
         backdropFilter: "blur(10px)",
         padding: isMobile ? "10px 14px" : "24px 30px",
         borderRadius: isMobile ? 16 : 24,
         border: "1px solid rgba(151, 254, 237, 0.2)",
         boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
-        gap: isMobile ? 16 : 24,
+        gap: isMobile ? 12 : 20,
         position: "relative",
       }}
     >
-      <div>
-        <p
+      {/* Top navbar with title and sign in button */}
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "space-between", 
+        alignItems: "center",
+        gap: 16,
+      }}>
+        <div style={{ flex: 1 }}>
+          <h1
+            style={{
+              fontSize: isMobile ? 24 : 42,
+              fontWeight: 900,
+              color: "#fff",
+              letterSpacing: "-1.5px",
+              margin: 0,
+              textShadow: "0 4px 20px rgba(151, 254, 237, 0.3)",
+            }}
+          >
+            Smart Campus <span style={{ color: "#97FEED" }}>Twin Control</span>
+          </h1>
+          {!isMobile && (
+            <p style={{ color: "rgba(151, 254, 237, 0.6)", fontSize: 13, fontWeight: 500, margin: "8px 0 0 0" }}>
+              Real-time 3D campus infrastructure monitoring — occupancy · temperature · energy states
+            </p>
+          )}
+        </div>
+
+        {/* Sign In/Out Button - Top Right */}
+        <button
+          onClick={onSignInToggle}
           style={{
-            fontSize: isMobile ? 9 : 11,
-            color: "#97FEED",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: isMobile ? "8px 16px" : "12px 24px",
+            borderRadius: 12,
+            background: isSignedIn ? "rgba(53,162,159,0.25)" : "rgba(7,25,82,0.5)",
+            border: `2px solid ${isSignedIn ? "#35A29F" : "rgba(151,254,237,0.3)"}`,
+            color: isSignedIn ? "#35A29F" : "#97FEED",
+            fontSize: isMobile ? 11 : 14,
             fontWeight: 800,
-            letterSpacing: "2px",
-            textTransform: "uppercase",
-            opacity: 0.8,
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            flexShrink: 0,
+            boxShadow: isSignedIn ? "0 0 20px rgba(53,162,159,0.3)" : "none",
           }}
         >
-          Group I3 • University of Moratuwa
-        </p>
-        <h1
-          style={{
-            fontSize: isMobile ? 24 : 42,
-            fontWeight: 900,
-            color: "#fff",
-            letterSpacing: "-1.5px",
-            margin: "4px 0",
-            textShadow: "0 4px 20px rgba(151, 254, 237, 0.3)",
-          }}
-        >
-          Smart Campus <span style={{ color: "#97FEED" }}>Twin Control</span>
-        </h1>
-        {!isMobile && (
-          <p style={{ color: "rgba(151, 254, 237, 0.6)", fontSize: 13, fontWeight: 500 }}>
-            Real-time 3D campus infrastructure monitoring — occupancy · temperature · energy states
-          </p>
-        )}
+          <span style={{ fontSize: isMobile ? 18 : 20 }}>
+            {isSignedIn ? "👤" : "🔐"}
+          </span>
+          <span>{isSignedIn ? "SIGN OUT" : "SIGN IN"}</span>
+        </button>
       </div>
+
+      {/* Stats section */}
 
       <div
         style={{
@@ -172,9 +198,10 @@ export default function DashboardHeader({
           </button>
 
         </div>
+      </div>
 
-        {/* Alert panel — rendered via portal into document.body so it always
-            appears above the Three.js WebGL canvas regardless of z-index */}
+      {/* Alert panel — rendered via portal into document.body so it always
+          appears above the Three.js WebGL canvas regardless of z-index */}
         {mounted && showPanel && createPortal(
           <div
             ref={panelRef}
@@ -246,7 +273,6 @@ export default function DashboardHeader({
           </div>,
           document.body
         )}
-      </div>
 
       <style>{`
         @keyframes alertPulse {

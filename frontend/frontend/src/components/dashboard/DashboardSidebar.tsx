@@ -6,6 +6,14 @@ import { BUILDING_DATA } from "../indoor/FloorData";
 import { usePrefersReducedMotion } from "@/app/hooks/usePrefersReducedMotion";
 import { useAnimatedValue } from "@/app/hooks/useAnimatedValue";
 
+const CONGESTION_TARGETS = new Set([
+  "Goda canteen",
+  "Sentra",
+  "canteen",
+  "wala_canteen",
+  "library",
+]);
+
 interface DashboardSidebarProps {
   zones: Zone[];
   filteredZones: Zone[];
@@ -39,6 +47,7 @@ export default function DashboardSidebar({
 }: DashboardSidebarProps) {
   const router = useRouter();
   const selectedZone = zones.find((z) => z.id === selectedId) ?? zones[0];
+  const canShowCongestion = CONGESTION_TARGETS.has(selectedId);
 
   const prefersReducedMotion = usePrefersReducedMotion();
   const animatedEnergyValue = useAnimatedValue(selectedZone.energyKw, 1);
@@ -379,6 +388,27 @@ export default function DashboardSidebar({
             }}
           >
             Go Inside
+          </button>
+        )}
+        {canShowCongestion && (
+          <button
+            onClick={() => {
+              router.push(`/congestion/${encodeURIComponent(selectedId)}`);
+            }}
+            style={{
+              marginTop: Object.keys(BUILDING_DATA).includes(selectedId) ? 10 : 14,
+              width: "100%",
+              padding: isMobile ? "14px" : "10px",
+              borderRadius: 10,
+              border: "1px solid rgba(253, 186, 116, 0.6)",
+              cursor: "pointer",
+              fontWeight: 800,
+              background: "linear-gradient(135deg, #FDBA74 0%, #F97316 55%, #EA580C 100%)",
+              color: "#1B1B1B",
+              boxShadow: "0 10px 22px rgba(0,0,0,0.35)",
+            }}
+          >
+            Congestion Forecast
           </button>
         )}
       </div>

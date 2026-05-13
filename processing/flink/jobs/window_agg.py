@@ -101,7 +101,9 @@ class AggInfluxSink(MapFunction):
             return "error"
 
         now_ms = int(time.time() * 1000)
-        if len(self._buffer) >= 200 or (now_ms - self._last_flush_ms) >= 2000:
+        if len(self._buffer) >= config.influx_batch_size or (
+            now_ms - self._last_flush_ms
+        ) >= config.influx_flush_ms:
             self._flush()
         return "ok"
 
